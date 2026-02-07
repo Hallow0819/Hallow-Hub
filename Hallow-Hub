@@ -408,7 +408,7 @@ end
 testESP()
 
 local Window = Rayfield:CreateWindow({
-   Name = "Tim Hub",
+   Name = "Hallow Hub",
    Icon = 0,
    LoadingTitle = "Hallow Hub",
    LoadingSubtitle = "by Hallow",
