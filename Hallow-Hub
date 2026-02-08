@@ -816,21 +816,12 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LP = game.Players.LocalPlayer
 
--- The Noclip Loop
+-- Noclip Logic
 RunService.Stepped:Connect(function()
     if Rayfield.Flags.NC_Flag and Rayfield.Flags.NC_Flag.CurrentValue then
         if LP.Character then
-            -- 1. Disable collisions for all body parts
             for _, v in pairs(LP.Character:GetDescendants()) do
-                if v:IsA("BasePart") then
-                    v.CanCollide = false
-                end
-            end
-            
-            -- 2. Force Physics State (This is what IY does to prevent rubberbanding)
-            local hum = LP.Character:FindFirstChildOfClass("Humanoid")
-            if hum and hum.FloorMaterial ~= Enum.Material.Air then
-                hum:ChangeState(Enum.HumanoidStateType.Physics)
+                if v:IsA("BasePart") then v.CanCollide = false end
             end
         end
     end
