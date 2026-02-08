@@ -760,6 +760,18 @@ UtilityTab:CreateButton({
     end
 })
 
+-- ===================== Infinite Yield ======================
+UtilityTab:CreateSection("Infinite Yield")
+
+UtilityTab:CreateButton({
+    Name = "Execute Infinite Yield",
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+    end
+})
+
+UtilityTab:CreateLabel("Note: Infinite Yield is a admin script which i do not own, all credits to EdgeIY for creating it. This button simply executes the script in case you want to use some of its admin features.")
+
 -- ==================== MOVEMENT & PHYSICS ====================
 local MoveSection = UtilityTab:CreateSection("Movement & Physics")
 local LP = game.Players.LocalPlayer
