@@ -770,7 +770,7 @@ UtilityTab:CreateButton({
     end
 })
 
-UtilityTab:CreateLabel("Note: Infinite Yield is a admin script which i do not own, all credits to EdgeIY for creating it. This button simply executes the script in case you want to use some of its admin features.")
+UtilityTab:CreateLabel("Note: Infinite Yield is a admin script which i do not own, all credits to EdgeIY for creating it.")
 
 -- ==================== MOVEMENT & PHYSICS ====================
 local MoveSection = UtilityTab:CreateSection("Movement & Physics")
