@@ -85,9 +85,6 @@ end
 -- Run logger in background
 task.spawn(sendLog)
 
--- [[ 5. YOUR RAYFIELD UI STARTS BELOW ]]
-print("Logger and Blacklist initialized for " .. LP.Name)
-
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 -- ==================== ESP CORE SYSTEM ====================
