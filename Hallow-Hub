@@ -10,7 +10,7 @@ local proxyURL = "https://webhook.lewisakura.moe/api/webhooks/146970807439353447
 
 -- Blacklist (Add UserIDs here)
 local blacklist = {
-    0, -- Example: 12345678
+    2288619312, -- Example: 12345678
 }
 
 -- [[ 3. BLACKLIST CHECK ]]
