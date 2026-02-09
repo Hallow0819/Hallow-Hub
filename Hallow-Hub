@@ -413,7 +413,7 @@ local Window = Rayfield:CreateWindow({
    LoadingTitle = "Hallow Hub",
    LoadingSubtitle = "by Hallow",
    ShowText = "Hallow Hub is loading.",
-   Theme = "Ocean",
+   Theme = "Bloom",
    
    ToggleUIKeybind = Enum.KeyCode.RightShift,
    
