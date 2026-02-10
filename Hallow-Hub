@@ -104,6 +104,7 @@ local ESP_SETTINGS = {
     SHOW_HEALTH = true,
     SHOW_DISTANCE = true,
     MAX_DISTANCE = 1000,
+    NAME_MODE = "Both", 
     
     ENEMY_COLOR = Color3.fromRGB(255, 50, 50),
     TEAM_COLOR = Color3.fromRGB(50, 150, 255),
@@ -292,6 +293,21 @@ local function createESP(player)
                 data.billboard.Enabled = false
                 return
             end
+
+            -- ==================== NEW DYNAMIC NAME LOGIC ====================
+            local nameToShow = ""
+
+            if ESP_SETTINGS.NAME_MODE == "Username" then
+                nameToShow = player.Name
+            elseif ESP_SETTINGS.NAME_MODE == "Display Name" then
+                nameToShow = player.DisplayName
+            else -- This handles "Both"
+                nameToShow = player.DisplayName .. " (@" .. player.Name .. ")"
+            end
+
+            -- Apply the name and friend star to the label
+            data.nameLabel.Text = isFriend and "⭐ " .. nameToShow or nameToShow
+            -- ===============================================================
             
             -- Update colors
             local color
@@ -538,6 +554,22 @@ local DistanceToggle = ESPTab:CreateToggle({
             end
         end
     end
+})
+
+ESPTab:CreateDropdown({
+   Name = "Name Display Mode",
+   Options = {"Username", "Display Name", "Both"},
+   CurrentOption = {"Both"},
+   MultipleOptions = false,
+   Flag = "NameModeDropdown", 
+   Callback = function(Option)
+      -- Safety check: handles both single string or table return
+      local Selection = type(Option) == "table" and Option[1] or Option
+      ESP_SETTINGS.NAME_MODE = Selection
+      
+      -- Debug print to console to verify it's working
+      print("ESP Name Mode set to: " .. tostring(Selection))
+   end,
 })
 
 -- Configuration Section
