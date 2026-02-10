@@ -295,18 +295,18 @@ local function createESP(player)
             end
 
             -- ==================== NEW DYNAMIC NAME LOGIC ====================
+            -- Determine the string based on the setting
             local nameToShow = ""
-
             if ESP_SETTINGS.NAME_MODE == "Username" then
-                nameToShow = player.Name
+            nameToShow = player.Name
             elseif ESP_SETTINGS.NAME_MODE == "Display Name" then
-                nameToShow = player.DisplayName
-            else -- This handles "Both"
-                nameToShow = player.DisplayName .. " (@" .. player.Name .. ")"
+            nameToShow = player.DisplayName
+            else
+            nameToShow = player.DisplayName .. " (@" .. player.Name .. ")"
             end
 
-            -- Apply the name and friend star to the label
-            data.nameLabel.Text = isFriend and "⭐ " .. nameToShow or nameToShow
+           -- Apply it
+           data.nameLabel.Text = isFriend and "⭐ " .. nameToShow or nameToShow
             -- ===============================================================
             
             -- Update colors
@@ -361,9 +361,6 @@ local function createESP(player)
             -- Update visibility
             data.nameLabel.Visible = ESP_SETTINGS.SHOW_NAMES
             data.infoLabel.Visible = ESP_SETTINGS.SHOW_HEALTH or ESP_SETTINGS.SHOW_DISTANCE
-            
-            -- Friend indicator
-            data.nameLabel.Text = isFriend and "⭐ " .. player.Name or player.Name
         end)
     end
     
@@ -556,19 +553,17 @@ local DistanceToggle = ESPTab:CreateToggle({
     end
 })
 
-ESPTab:CreateDropdown({
+EspTab:CreateDropdown({
    Name = "Name Display Mode",
    Options = {"Username", "Display Name", "Both"},
    CurrentOption = {"Both"},
    MultipleOptions = false,
    Flag = "NameModeDropdown", 
    Callback = function(Option)
-      -- Safety check: handles both single string or table return
+      -- This ensures that regardless of Rayfield version, the variable is set
       local Selection = type(Option) == "table" and Option[1] or Option
       ESP_SETTINGS.NAME_MODE = Selection
-      
-      -- Debug print to console to verify it's working
-      print("ESP Name Mode set to: " .. tostring(Selection))
+      print("System: Name mode changed to " .. tostring(Selection)) -- Check your F9 console
    end,
 })
 
