@@ -553,17 +553,19 @@ local DistanceToggle = ESPTab:CreateToggle({
     end
 })
 
-EspTab:CreateDropdown({
+ESPTab:CreateDropdown({
    Name = "Name Display Mode",
    Options = {"Username", "Display Name", "Both"},
    CurrentOption = {"Both"},
    MultipleOptions = false,
    Flag = "NameModeDropdown", 
    Callback = function(Option)
-      -- This ensures that regardless of Rayfield version, the variable is set
+      -- Safety check: handles both single string or table return
       local Selection = type(Option) == "table" and Option[1] or Option
       ESP_SETTINGS.NAME_MODE = Selection
-      print("System: Name mode changed to " .. tostring(Selection)) -- Check your F9 console
+      
+      -- Debug print to console to verify it's working
+      print("ESP Name Mode set to: " .. tostring(Selection))
    end,
 })
 
