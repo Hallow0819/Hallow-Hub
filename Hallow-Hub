@@ -94,6 +94,9 @@ local UIS = game:GetService("UserInputService")
 local flying = false
 local bv, bg
 
+-- We set a global variable so the Slider can "talk" to the Loop directly
+_G.FlySpeed = 50 
+
 local function stopFly()
     flying = false
     if bv then bv:Destroy() bv = nil end
@@ -129,16 +132,8 @@ local function startFly()
             local cam = workspace.CurrentCamera
             local cf = cam.CFrame
             
-            -- THE FIX: Check for Rayfield Flags Safely
-            local currentSpeed = 50
-            pcall(function()
-                if Rayfield and Rayfield.Flags and Rayfield.Flags["FlySpeed_Flag"] then
-                    currentSpeed = Rayfield.Flags["FlySpeed_Flag"].CurrentValue
-                end
-            end)
-            
-            -- Optional: Uncomment the line below to see speed in F9 console
-            -- print("Fly Speed: " .. tostring(currentSpeed))
+            -- Now the loop just looks at the global variable
+            local speed = _G.FlySpeed 
 
             local moveDir = Vector3.new(0,0,0)
             
@@ -150,7 +145,7 @@ local function startFly()
             if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0, 1, 0) end
             
             if moveDir.Magnitude > 0 then
-                bv.Velocity = moveDir.Unit * currentSpeed
+                bv.Velocity = moveDir.Unit * speed
             else
                 bv.Velocity = Vector3.new(0, 0, 0)
             end
@@ -902,7 +897,8 @@ UtilityTab:CreateSlider({
    CurrentValue = 50,
    Flag = "FlySpeed_Flag", 
    Callback = function(Value)
-      -- The loop handles the value, so this can stay empty
+      -- This tells the Fly Loop the new speed immediately
+      _G.FlySpeed = Value
    end,
 })
 
