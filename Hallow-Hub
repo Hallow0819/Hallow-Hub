@@ -529,28 +529,43 @@ local Window = Rayfield:CreateWindow({
 -- Wait for window to fully load
 task.wait(1)
 
--- ==================== CUSTOM BACKGROUND INJECTION ====================
-local MainFrame = game:GetService("CoreGui"):WaitForChild("Rayfield"):WaitForChild("Main")
+-- ==================== PROTECTED BACKGROUND INJECTION ====================
+local function InjectBackground()
+    local CoreGui = game:GetService("CoreGui")
+    local RayfieldGui = CoreGui:FindFirstChild("Rayfield")
+    
+    -- Wait up to 5 seconds for the Main frame to actually exist
+    local startTime = tick()
+    while not RayfieldGui or not RayfieldGui:FindFirstChild("Main") do
+        if tick() - startTime > 5 then return warn("Hallow Hub: Could not find Main frame") end
+        task.wait(0.1)
+        RayfieldGui = CoreGui:FindFirstChild("Rayfield")
+    end
 
-local BackgroundImage = Instance.new("ImageLabel")
-BackgroundImage.Name = "HallowHubBackground"
-BackgroundImage.Parent = MainFrame
-BackgroundImage.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-BackgroundImage.BackgroundTransparency = 1
-BackgroundImage.Position = UDim2.new(0, 0, 0, 0)
-BackgroundImage.Size = UDim2.new(1, 0, 1, 0)
+    local MainFrame = RayfieldGui.Main
+    
+    -- Check if it's already been added to prevent duplicates
+    if MainFrame:FindFirstChild("HallowHubBackground") then return end
 
--- Using your provided ID
-BackgroundImage.Image = "rbxassetid://1322801390" 
+    local BackgroundImage = Instance.new("ImageLabel")
+    BackgroundImage.Name = "HallowHubBackground"
+    BackgroundImage.Parent = MainFrame
+    BackgroundImage.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    BackgroundImage.BackgroundTransparency = 1
+    BackgroundImage.Position = UDim2.new(0, 0, 0, 0)
+    BackgroundImage.Size = UDim2.new(1, 0, 1, 0)
+    BackgroundImage.Image = "rbxassetid://1322801390" 
+    BackgroundImage.ImageTransparency = 0.6
+    BackgroundImage.ScaleType = Enum.ScaleType.Crop
+    BackgroundImage.ZIndex = 0 
 
-BackgroundImage.ImageTransparency = 0.6 -- Adjust between 0.1 and 0.9 for the best look
-BackgroundImage.ScaleType = Enum.ScaleType.Crop
-BackgroundImage.ZIndex = 0 -- Ensures it stays behind buttons/tabs
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 9)
+    Corner.Parent = BackgroundImage
+end
 
--- Match the rounded corners of the Bloom theme
-local Corner = Instance.new("UICorner")
-Corner.CornerRadius = UDim.new(0, 9)
-Corner.Parent = BackgroundImage
+-- Run the injection
+task.spawn(InjectBackground)
 
 -- ==================== ESP TAB ====================
 local ESPTab = Window:CreateTab("ESP")
