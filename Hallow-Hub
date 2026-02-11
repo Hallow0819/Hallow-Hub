@@ -912,13 +912,17 @@ UtilityTab:CreateSlider({
    Callback = function() end, -- Logic handles this automatically
 })
 
-UtilityTab:CreateSlider({
-   Name = "Fly Speed",
-   Range = {10, 500},
-   Increment = 1,
-   CurrentValue = 50,
-   Flag = "FlySpeed_Flag",
-   Callback = function() end, -- Logic handles this automatically
+UtilityTab:CreateToggle({
+   Name = "Fly",
+   CurrentValue = false,
+   Flag = "Fly_Flag",
+   Callback = function(Value)
+      if Value then
+          if startFly then startFly() end
+      else
+          if stopFly then stopFly() end
+      end
+   end,
 })
 
 UtilityTab:CreateToggle({Name = "Infinite Jump", CurrentValue = false, Flag = "IJ_Flag", Callback = function() end})
