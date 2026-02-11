@@ -129,9 +129,9 @@ local function startFly()
             local cam = workspace.CurrentCamera
             local cf = cam.CFrame
             
-            -- SPEED FIX: This must be INSIDE the loop to update live
+            -- THE FIX: Check if Flags exists first. If not, use 50.
             local speed = 50
-            if Rayfield.Flags.FlySpeed_Flag then
+            if Rayfield and Rayfield.Flags and Rayfield.Flags.FlySpeed_Flag then
                 speed = Rayfield.Flags.FlySpeed_Flag.CurrentValue
             end
 
