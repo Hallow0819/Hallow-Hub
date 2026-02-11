@@ -526,6 +526,30 @@ local Window = Rayfield:CreateWindow({
    }
 })
 
+-- ==================== CUSTOM BACKGROUND INJECTION ====================
+-- This finds the Main frame of Rayfield and adds your image behind everything
+local MainFrame = game:GetService("CoreGui"):WaitForChild("Rayfield"):WaitForChild("Main")
+
+local BackgroundImage = Instance.new("ImageLabel")
+BackgroundImage.Name = "HallowHubBackground"
+BackgroundImage.Parent = MainFrame
+BackgroundImage.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+BackgroundImage.BackgroundTransparency = 1
+BackgroundImage.Position = UDim2.new(0, 0, 0, 0)
+BackgroundImage.Size = UDim2.new(1, 0, 1, 0)
+
+-- !!! REPLACE 00000000 WITH YOUR UPLOADED ASSET ID !!!
+BackgroundImage.Image = "1322801390" -- Example image, replace with your own for best results
+
+BackgroundImage.ImageTransparency = 0.6 -- Adjust this (0.1 to 0.9) to make it more/less visible
+BackgroundImage.ScaleType = Enum.ScaleType.Crop
+BackgroundImage.ZIndex = 0 -- Keeps it behind buttons and text
+
+-- This ensures the image corners match the Bloom theme's rounded corners
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0, 9)
+Corner.Parent = BackgroundImage
+
 -- Wait for window to fully load
 task.wait(1)
 
