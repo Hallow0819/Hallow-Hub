@@ -129,14 +129,13 @@ local function startFly()
             local cam = workspace.CurrentCamera
             local cf = cam.CFrame
             
-            -- THE FIX: Check if Flags exists first. If not, use 50.
-           -- Replace the speed check inside the loop with this if needed:
-local speed = 50
-local flag = Rayfield.Flags.FlySpeed_Flag
-if flag then
-    -- Check if it's the value directly or inside the CurrentValue key
-    speed = type(flag) == "table" and flag.CurrentValue or flag
-end
+            -- THE FIX: Prevents the "nil with flags" crash
+            local speed = 50
+            pcall(function()
+                if Rayfield and Rayfield.Flags and Rayfield.Flags.FlySpeed_Flag then
+                    speed = Rayfield.Flags.FlySpeed_Flag.CurrentValue
+                end
+            end)
 
             local moveDir = Vector3.new(0,0,0)
             
@@ -158,7 +157,6 @@ end
         end
     end)
 end
-
 -- ==================== Fly End ====================
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
