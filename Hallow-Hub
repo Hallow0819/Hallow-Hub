@@ -114,7 +114,6 @@ local function startFly()
     hum.PlatformStand = true
     
     bv = Instance.new("BodyVelocity")
-    -- We set MaxForce to math.huge on ALL axes to prevent being "stuck"
     bv.MaxForce = Vector3.new(1e9, 1e9, 1e9) 
     bv.Velocity = Vector3.new(0, 0, 0)
     bv.Parent = root
@@ -128,27 +127,26 @@ local function startFly()
     task.spawn(function()
         while flying and root and root.Parent do
             local cam = workspace.CurrentCamera
-            -- FALLBACK: If Rayfield errors, use 50. This stops the callback error.
-            local speed = 50
-            local success, err = pcall(function()
-                if Rayfield.Flags.FlySpeed_Flag then
-                    speed = Rayfield.Flags.FlySpeed_Flag.CurrentValue
-                end
-            end)
-
-            local moveDir = Vector3.new(0,0,0)
             local cf = cam.CFrame
             
-            -- Combine all directions into one Vector
+            -- THE FIX: Instead of a static local speed, we grab the Flag value directly here
+            local currentSpeed = 50
+            if Rayfield.Flags.FlySpeed_Flag then
+                currentSpeed = Rayfield.Flags.FlySpeed_Flag.CurrentValue
+            end
+
+            local moveDir = Vector3.new(0,0,0)
+            
             if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + cf.LookVector end
             if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cf.LookVector end
             if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cf.RightVector end
             if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cf.RightVector end
-            if UIS:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
-            if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0, 1, 0) end
+            if UIS:IsKeyDown(Enum.KeyCode.E) then moveDir = moveDir + Vector3.new(0, 1, 0) end
+            if UIS:IsKeyDown(Enum.KeyCode.Q) then moveDir = moveDir - Vector3.new(0, 1, 0) end
             
             if moveDir.Magnitude > 0 then
-                bv.Velocity = moveDir.Unit * speed
+                -- Use the updated currentSpeed variable
+                bv.Velocity = moveDir.Unit * currentSpeed
             else
                 bv.Velocity = Vector3.new(0, 0, 0)
             end
@@ -899,8 +897,10 @@ UtilityTab:CreateSlider({
    Range = {10, 500},
    Increment = 1,
    CurrentValue = 50,
-   Flag = "FlySpeed_Flag",
-   Callback = function() end, -- Logic handles this automatically
+   Flag = "FlySpeed_Flag", -- THIS MUST MATCH THE LOGIC ABOVE
+   Callback = function(Value)
+      -- You don't actually need code here because the loop reads the Flag directly
+   end,
 })
 
 UtilityTab:CreateToggle({
