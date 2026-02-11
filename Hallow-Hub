@@ -89,39 +89,24 @@ end
 task.spawn(sendLog)
 
 -- ==================== Fly =====================
-local LP = game.Players.LocalPlayer
-local UIS = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local Cam = workspace.CurrentCamera
-
--- 2. DEFINE FUNCTIONS FIRST (So the buttons can see them)
-local flying = false
-local bv, bg
-
-local function stopFly()
-    flying = false
-    if bv then bv:Destroy() end
-    if bg then bg:Destroy() end
-    if LP.Character and LP.Character:FindFirstChildOfClass("Humanoid") then
-        LP.Character.Humanoid.PlatformStand = false
-        LP.Character.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-    end
-end
-
 local function startFly()
     local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
     local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
     if not root or not hum then return end
 
-    stopFly() -- Clean up any old fly objects before starting
+    stopFly() 
     hum.PlatformStand = true
     
-    bv = Instance.new("BodyVelocity", root)
+    bv = Instance.new("BodyVelocity")
     bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
-    
-    bg = Instance.new("BodyGyro", root)
+    bv.Velocity = Vector3.new(0, 0, 0)
+    bv.Parent = root
+
+    bg = Instance.new("BodyGyro")
     bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
     bg.P = 15000
+    bg.D = 500 -- Added dampening to stop the shaking
+    bg.Parent = root
 
     flying = true
     task.spawn(function()
@@ -129,14 +114,35 @@ local function startFly()
             local speed = Rayfield.Flags.FlySpeed_Flag and Rayfield.Flags.FlySpeed_Flag.CurrentValue or 50
             local moveDir = Vector3.new(0,0,0)
             
-            if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + Cam.CFrame.LookVector end
-            if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - Cam.CFrame.LookVector end
-            if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - Cam.CFrame.RightVector end
-            if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + Cam.CFrame.RightVector end
-            if UIS:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0,1,0) end
-            if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0,1,0) end
+            -- Directional calculation relative to where you are LOOKING
+            if UIS:IsKeyDown(Enum.KeyCode.W) then 
+                moveDir = moveDir + Cam.CFrame.LookVector 
+            end
+            if UIS:IsKeyDown(Enum.KeyCode.S) then 
+                moveDir = moveDir - Cam.CFrame.LookVector 
+            end
+            if UIS:IsKeyDown(Enum.KeyCode.A) then 
+                moveDir = moveDir - Cam.CFrame.RightVector 
+            end
+            if UIS:IsKeyDown(Enum.KeyCode.D) then 
+                moveDir = moveDir + Cam.CFrame.RightVector 
+            end
             
-            bv.Velocity = moveDir.Magnitude > 0 and moveDir.Unit * speed or Vector3.new(0,0,0)
+            -- Vertical movement
+            if UIS:IsKeyDown(Enum.KeyCode.Space) then 
+                moveDir = moveDir + Vector3.new(0, 1, 0) 
+            end
+            if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then 
+                moveDir = moveDir - Vector3.new(0, 1, 0) 
+            end
+            
+            -- Apply movement: We use .Unit to prevent "speed stacking"
+            if moveDir.Magnitude > 0 then
+                bv.Velocity = moveDir.Unit * speed
+            else
+                bv.Velocity = Vector3.new(0, 0, 0)
+            end
+            
             bg.CFrame = Cam.CFrame
             task.wait()
         end
@@ -160,7 +166,7 @@ local ESP_SETTINGS = {
     SHOW_NAMES = true,
     SHOW_HEALTH = true,
     SHOW_DISTANCE = true,
-    MAX_DISTANCE = 1000,
+    MAX_DISTANCE = 2000,
     NAME_MODE = "Both", 
     
     ENEMY_COLOR = Color3.fromRGB(255, 50, 50),
