@@ -529,44 +529,51 @@ local Window = Rayfield:CreateWindow({
 -- Wait for window to fully load
 task.wait(1)
 
--- ==================== PROTECTED BACKGROUND INJECTION ====================
-local function InjectBackground()
-    local CoreGui = game:GetService("CoreGui")
-    local RayfieldGui = CoreGui:FindFirstChild("Rayfield")
+-- ==================== UNIVERSAL BACKGROUND INJECTION ====================
+task.spawn(function()
+    local player = game:GetService("Players").LocalPlayer
+    local coreGui = game:GetService("CoreGui")
+    local playerGui = player:WaitForChild("PlayerGui")
     
-    -- Wait up to 5 seconds for the Main frame to actually exist
-    local startTime = tick()
-    while not RayfieldGui or not RayfieldGui:FindFirstChild("Main") do
-        if tick() - startTime > 5 then return warn("Hallow Hub: Could not find Main frame") end
-        task.wait(0.1)
-        RayfieldGui = CoreGui:FindFirstChild("Rayfield")
+    local targetGui = nil
+    local mainFrame = nil
+
+    -- Loop to find where Rayfield is hiding
+    for i = 1, 50 do 
+        targetGui = coreGui:FindFirstChild("Rayfield") or playerGui:FindFirstChild("Rayfield")
+        if targetGui and targetGui:FindFirstChild("Main") then
+            mainFrame = targetGui.Main
+            break
+        end
+        task.wait(0.2)
     end
 
-    local MainFrame = RayfieldGui.Main
-    
-    -- Check if it's already been added to prevent duplicates
-    if MainFrame:FindFirstChild("HallowHubBackground") then return end
+    if mainFrame then
+        -- Prevent double backgrounding
+        if mainFrame:FindFirstChild("HallowHubBackground") then return end
 
-    local BackgroundImage = Instance.new("ImageLabel")
-    BackgroundImage.Name = "HallowHubBackground"
-    BackgroundImage.Parent = MainFrame
-    BackgroundImage.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    BackgroundImage.BackgroundTransparency = 1
-    BackgroundImage.Position = UDim2.new(0, 0, 0, 0)
-    BackgroundImage.Size = UDim2.new(1, 0, 1, 0)
-    BackgroundImage.Image = "rbxassetid://1322801390" 
-    BackgroundImage.ImageTransparency = 0.6
-    BackgroundImage.ScaleType = Enum.ScaleType.Crop
-    BackgroundImage.ZIndex = 0 
+        local BackgroundImage = Instance.new("ImageLabel")
+        BackgroundImage.Name = "HallowHubBackground"
+        BackgroundImage.Parent = mainFrame
+        BackgroundImage.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        BackgroundImage.BackgroundTransparency = 1
+        BackgroundImage.Position = UDim2.new(0, 0, 0, 0)
+        BackgroundImage.Size = UDim2.new(1, 0, 1, 0)
+        BackgroundImage.Image = "rbxassetid://1322801390" 
+        BackgroundImage.ImageTransparency = 0.6
+        BackgroundImage.ScaleType = Enum.ScaleType.Crop
+        BackgroundImage.ZIndex = 0 
 
-    local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 9)
-    Corner.Parent = BackgroundImage
-end
-
--- Run the injection
-task.spawn(InjectBackground)
-
+        local Corner = Instance.new("UICorner")
+        Corner.CornerRadius = UDim.new(0, 9)
+        Corner.Parent = BackgroundImage
+        
+        print("Hallow Hub: Background Applied Successfully")
+    else
+        warn("Hallow Hub: Still couldn't find the Main frame. Check if the UI is actually opening.")
+    end
+end)
+-- =====================================================================
 -- ==================== ESP TAB ====================
 local ESPTab = Window:CreateTab("ESP")
 
