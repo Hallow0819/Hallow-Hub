@@ -530,7 +530,7 @@ local Window = Rayfield:CreateWindow({
 task.wait(1)
 
 -- ==================== ESP TAB ====================
-local ESPTab = Window:CreateTab("ESP")
+local ESPTab = Window:CreateTab("ESP","ghost")
 
 -- Main ESP Settings
 local MainSection = ESPTab:CreateSection("ESP Settings")
@@ -803,7 +803,7 @@ initializeESP()
 print("✅ Hallow Interface with ESP loaded successfully!")
 
 -- ==================== UTILITY TAB ====================
-local UtilityTab = Window:CreateTab("Utility")
+local UtilityTab = Window:CreateTab("Utility","cog")
 
 -- Section for Server Information
 UtilityTab:CreateSection("Server Stats")
