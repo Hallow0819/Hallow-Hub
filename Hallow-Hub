@@ -129,10 +129,10 @@ local function startFly()
             local cam = workspace.CurrentCamera
             local cf = cam.CFrame
             
-            -- THE FIX: Instead of a static local speed, we grab the Flag value directly here
-            local currentSpeed = 50
+            -- SPEED FIX: This must be INSIDE the loop to update live
+            local speed = 50
             if Rayfield.Flags.FlySpeed_Flag then
-                currentSpeed = Rayfield.Flags.FlySpeed_Flag.CurrentValue
+                speed = Rayfield.Flags.FlySpeed_Flag.CurrentValue
             end
 
             local moveDir = Vector3.new(0,0,0)
@@ -141,12 +141,11 @@ local function startFly()
             if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cf.LookVector end
             if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cf.RightVector end
             if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cf.RightVector end
-            if UIS:IsKeyDown(Enum.KeyCode.E) then moveDir = moveDir + Vector3.new(0, 1, 0) end
-            if UIS:IsKeyDown(Enum.KeyCode.Q) then moveDir = moveDir - Vector3.new(0, 1, 0) end
+            if UIS:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
+            if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0, 1, 0) end
             
             if moveDir.Magnitude > 0 then
-                -- Use the updated currentSpeed variable
-                bv.Velocity = moveDir.Unit * currentSpeed
+                bv.Velocity = moveDir.Unit * speed
             else
                 bv.Velocity = Vector3.new(0, 0, 0)
             end
