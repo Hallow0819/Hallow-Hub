@@ -114,36 +114,36 @@ local function startFly()
     hum.PlatformStand = true
     
     bv = Instance.new("BodyVelocity")
-    bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
+    -- We set MaxForce to math.huge on ALL axes to prevent being "stuck"
+    bv.MaxForce = Vector3.new(1e9, 1e9, 1e9) 
     bv.Velocity = Vector3.new(0, 0, 0)
     bv.Parent = root
 
     bg = Instance.new("BodyGyro")
-    bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
+    bg.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
     bg.P = 15000
-    bg.D = 500
     bg.Parent = root
 
     flying = true
     task.spawn(function()
         while flying and root and root.Parent do
             local cam = workspace.CurrentCamera
+            -- FALLBACK: If Rayfield errors, use 50. This stops the callback error.
             local speed = 50
-            
-            -- Use a direct check instead of pcall to find the speed
-            if Rayfield.Flags.FlySpeed_Flag then
-                speed = Rayfield.Flags.FlySpeed_Flag.CurrentValue
-            end
+            local success, err = pcall(function()
+                if Rayfield.Flags.FlySpeed_Flag then
+                    speed = Rayfield.Flags.FlySpeed_Flag.CurrentValue
+                end
+            end)
 
             local moveDir = Vector3.new(0,0,0)
+            local cf = cam.CFrame
             
-            -- Horizontal Movement
-            if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + cam.CFrame.LookVector end
-            if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cam.CFrame.LookVector end
-            if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cam.CFrame.RightVector end
-            if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cam.CFrame.RightVector end
-            
-            -- Vertical Movement
+            -- Combine all directions into one Vector
+            if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + cf.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cf.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cf.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cf.RightVector end
             if UIS:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
             if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0, 1, 0) end
             
@@ -153,7 +153,7 @@ local function startFly()
                 bv.Velocity = Vector3.new(0, 0, 0)
             end
             
-            bg.CFrame = cam.CFrame
+            bg.CFrame = cf
             task.wait()
         end
     end)
