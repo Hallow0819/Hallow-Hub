@@ -932,6 +932,7 @@ UtilityTab:CreateButton({
         -- 1. Reset UI (Toggles/Sliders)
         SpeedSlider:Set(16)
         JumpSlider:Set(50)
+        Rayfield.Flags.FlySpeed_Flag:Set(50)
         if Rayfield.Flags.IJ_Flag then Rayfield.Flags.IJ_Flag:Set(false) end
         if Rayfield.Flags.NC_Flag then Rayfield.Flags.NC_Flag:Set(false) end
         
