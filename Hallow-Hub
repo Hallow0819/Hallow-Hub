@@ -821,24 +821,55 @@ local JumpSlider = UtilityTab:CreateSlider({
     end,
 })
 
+UtilityTab:CreateToggle({
+   Name = "Fly",
+   CurrentValue = false,
+   Flag = "Fly_Flag", -- Toggle Flag
+   Callback = function(Value)
+      if Value then
+          startFly()
+      else
+          stopFly()
+      end
+   end,
+})
+
+UtilityTab:CreateSlider({
+   Name = "Fly Speed",
+   Range = {10, 500},
+   Increment = 1,
+   Suffix = " Speed",
+   CurrentValue = 50,
+   Flag = "FlySpeed_Flag", -- Slider Flag
+   Callback = function(Value)
+      -- The while loop in startFly() automatically sees this change!
+   end,
+})
+
 UtilityTab:CreateToggle({Name = "Infinite Jump", CurrentValue = false, Flag = "IJ_Flag", Callback = function() end})
 UtilityTab:CreateToggle({Name = "Noclip", CurrentValue = false, Flag = "NC_Flag", Callback = function() end})
 
--- 2. THE RESET BUTTON (The "Combined" Master Switch)
+-- [[ UPDATED RESET BUTTON ]]
 UtilityTab:CreateButton({
     Name = "Reset All Movement",
     Callback = function()
-        -- Reset the UI (This automatically updates the Flags)
+        -- 1. Reset UI (Toggles/Sliders)
         SpeedSlider:Set(16)
         JumpSlider:Set(50)
         if Rayfield.Flags.IJ_Flag then Rayfield.Flags.IJ_Flag:Set(false) end
         if Rayfield.Flags.NC_Flag then Rayfield.Flags.NC_Flag:Set(false) end
         
-        -- Immediate Character Reset
-        local hum = LP.Character and LP.Character:FindFirstChild("Humanoid")
+        -- 2. Fly Support: Turn off Toggle and Kill Physics
+        if Rayfield.Flags.Fly_Flag then Rayfield.Flags.Fly_Flag:Set(false) end
+        stopFly() 
+        
+        -- 3. Immediate Character Reset
+        local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
         if hum then
             hum.WalkSpeed = 16
             hum.JumpPower = 50
+            hum.PlatformStand = false -- Ensures you aren't stuck in "fly" pose
+            hum:ChangeState(Enum.HumanoidStateType.GettingUp)
         end
     end
 })
