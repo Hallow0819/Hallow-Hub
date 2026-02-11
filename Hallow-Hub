@@ -526,8 +526,10 @@ local Window = Rayfield:CreateWindow({
    }
 })
 
+-- Wait for window to fully load
+task.wait(1)
+
 -- ==================== CUSTOM BACKGROUND INJECTION ====================
--- This finds the Main frame of Rayfield and adds your image behind everything
 local MainFrame = game:GetService("CoreGui"):WaitForChild("Rayfield"):WaitForChild("Main")
 
 local BackgroundImage = Instance.new("ImageLabel")
@@ -538,20 +540,17 @@ BackgroundImage.BackgroundTransparency = 1
 BackgroundImage.Position = UDim2.new(0, 0, 0, 0)
 BackgroundImage.Size = UDim2.new(1, 0, 1, 0)
 
--- !!! REPLACE 00000000 WITH YOUR UPLOADED ASSET ID !!!
-BackgroundImage.Image = "1322801390" -- Example image, replace with your own for best results
+-- Using your provided ID
+BackgroundImage.Image = "rbxassetid://1322801390" 
 
-BackgroundImage.ImageTransparency = 0.6 -- Adjust this (0.1 to 0.9) to make it more/less visible
+BackgroundImage.ImageTransparency = 0.6 -- Adjust between 0.1 and 0.9 for the best look
 BackgroundImage.ScaleType = Enum.ScaleType.Crop
-BackgroundImage.ZIndex = 0 -- Keeps it behind buttons and text
+BackgroundImage.ZIndex = 0 -- Ensures it stays behind buttons/tabs
 
--- This ensures the image corners match the Bloom theme's rounded corners
+-- Match the rounded corners of the Bloom theme
 local Corner = Instance.new("UICorner")
 Corner.CornerRadius = UDim.new(0, 9)
 Corner.Parent = BackgroundImage
-
--- Wait for window to fully load
-task.wait(1)
 
 -- ==================== ESP TAB ====================
 local ESPTab = Window:CreateTab("ESP")
