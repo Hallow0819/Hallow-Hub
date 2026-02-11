@@ -530,56 +530,52 @@ local Window = Rayfield:CreateWindow({
 task.wait(1)
 
 --===================== BACKGROUND INJECTION ====================
-local function ForceInjectBackground()
-    local CoreGui = game:GetService("CoreGui")
-    local PlayerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
-    local locations = {CoreGui, PlayerGui}
+task.spawn(function()
+    task.wait(3) -- Wait for Bloom animation
     
+    local coreGui = game:GetService("CoreGui")
+    local playerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
     local mainFrame = nil
 
-    -- 1. Search for the window by looking for your title "Hallow Hub"
-    for _, location in pairs(locations) do
-        local descendants = location:GetDescendants()
-        for _, obj in pairs(descendants) do
+    -- Find the Main frame
+    for _, loc in pairs({coreGui, playerGui}) do
+        for _, obj in pairs(loc:GetDescendants()) do
             if obj:IsA("TextLabel") and obj.Text == "Hallow Hub" then
-                -- Rayfield's structure: Title is inside Topbar, Topbar is inside Main
-                if obj.Parent and obj.Parent.Parent and obj.Parent.Parent.Name == "Main" then
-                    mainFrame = obj.Parent.Parent
-                    break
-                elseif obj.Parent and obj.Parent.Name == "Main" then
-                    mainFrame = obj.Parent
-                    break
-                end
+                mainFrame = obj:FindFirstAncestor("Main")
+                if mainFrame then break end
             end
         end
-        if mainFrame then break end
     end
 
-    -- 2. If we found it, apply the image
     if mainFrame then
-        if mainFrame:FindFirstChild("HallowBG") then return end
-
-        local bg = Instance.new("ImageLabel")
+        -- 1. Create the Image
+        local bg = mainFrame:FindFirstChild("HallowBG") or Instance.new("ImageLabel")
         bg.Name = "HallowBG"
         bg.Parent = mainFrame
         bg.Size = UDim2.new(1, 0, 1, 0)
+        bg.Position = UDim2.new(0, 0, 0, 0)
         bg.BackgroundTransparency = 1
         bg.Image = "rbxassetid://1322801390"
-        bg.ImageTransparency = 0.6
+        bg.ImageTransparency = 0.5 -- Lower this to 0.3 if it's still too light
         bg.ScaleType = Enum.ScaleType.Crop
-        bg.ZIndex = 0 -- Keep it at 0 so it stays behind buttons
         
-        local corner = Instance.new("UICorner")
+        -- 2. FORCE VISIBILITY
+        -- This moves the image in front of the default Rayfield background color
+        bg.ZIndex = 1 
+        for _, child in pairs(mainFrame:GetChildren()) do
+            if child:IsA("GuiObject") and child ~= bg then
+                child.ZIndex = 2 -- Moves buttons/text in front of your image
+            end
+        end
+
+        -- 3. Round the corners
+        local corner = bg:FindFirstChildOfClass("UICorner") or Instance.new("UICorner")
         corner.CornerRadius = UDim.new(0, 9)
         corner.Parent = bg
         
-        print("Success: Background attached to " .. mainFrame:GetFullName())
-    else
-        warn("Hallow Hub: Failed to find UI by title. Is 'Hallow Hub' spelled correctly in the CreateWindow?")
+        print("Hallow Hub: Image visibility forced.")
     end
-end
-
-task.spawn(ForceInjectBackground)
+end)
 -- ==================== ESP TAB ====================
 local ESPTab = Window:CreateTab("ESP")
 
