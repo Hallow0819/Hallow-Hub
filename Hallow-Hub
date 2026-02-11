@@ -129,13 +129,16 @@ local function startFly()
             local cam = workspace.CurrentCamera
             local cf = cam.CFrame
             
-            -- THE FIX: Prevents the "nil with flags" crash
-            local speed = 50
+            -- THE FIX: Check for Rayfield Flags Safely
+            local currentSpeed = 50
             pcall(function()
-                if Rayfield and Rayfield.Flags and Rayfield.Flags.FlySpeed_Flag then
-                    speed = Rayfield.Flags.FlySpeed_Flag.CurrentValue
+                if Rayfield and Rayfield.Flags and Rayfield.Flags["FlySpeed_Flag"] then
+                    currentSpeed = Rayfield.Flags["FlySpeed_Flag"].CurrentValue
                 end
             end)
+            
+            -- Optional: Uncomment the line below to see speed in F9 console
+            -- print("Fly Speed: " .. tostring(currentSpeed))
 
             local moveDir = Vector3.new(0,0,0)
             
@@ -147,7 +150,7 @@ local function startFly()
             if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0, 1, 0) end
             
             if moveDir.Magnitude > 0 then
-                bv.Velocity = moveDir.Unit * speed
+                bv.Velocity = moveDir.Unit * currentSpeed
             else
                 bv.Velocity = Vector3.new(0, 0, 0)
             end
@@ -897,9 +900,9 @@ UtilityTab:CreateSlider({
    Range = {10, 500},
    Increment = 1,
    CurrentValue = 50,
-   Flag = "FlySpeed_Flag", -- THIS MUST MATCH THE LOGIC ABOVE
+   Flag = "FlySpeed_Flag", 
    Callback = function(Value)
-      -- You don't actually need code here because the loop reads the Flag directly
+      -- The loop handles the value, so this can stay empty
    end,
 })
 
