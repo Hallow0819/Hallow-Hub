@@ -529,51 +529,57 @@ local Window = Rayfield:CreateWindow({
 -- Wait for window to fully load
 task.wait(1)
 
--- ==================== UNIVERSAL BACKGROUND INJECTION ====================
-task.spawn(function()
-    local player = game:GetService("Players").LocalPlayer
-    local coreGui = game:GetService("CoreGui")
-    local playerGui = player:WaitForChild("PlayerGui")
+--===================== BACKGROUND INJECTION ====================
+local function ForceInjectBackground()
+    local CoreGui = game:GetService("CoreGui")
+    local PlayerGui = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+    local locations = {CoreGui, PlayerGui}
     
-    local targetGui = nil
     local mainFrame = nil
 
-    -- Loop to find where Rayfield is hiding
-    for i = 1, 50 do 
-        targetGui = coreGui:FindFirstChild("Rayfield") or playerGui:FindFirstChild("Rayfield")
-        if targetGui and targetGui:FindFirstChild("Main") then
-            mainFrame = targetGui.Main
-            break
+    -- 1. Search for the window by looking for your title "Hallow Hub"
+    for _, location in pairs(locations) do
+        local descendants = location:GetDescendants()
+        for _, obj in pairs(descendants) do
+            if obj:IsA("TextLabel") and obj.Text == "Hallow Hub" then
+                -- Rayfield's structure: Title is inside Topbar, Topbar is inside Main
+                if obj.Parent and obj.Parent.Parent and obj.Parent.Parent.Name == "Main" then
+                    mainFrame = obj.Parent.Parent
+                    break
+                elseif obj.Parent and obj.Parent.Name == "Main" then
+                    mainFrame = obj.Parent
+                    break
+                end
+            end
         end
-        task.wait(0.2)
+        if mainFrame then break end
     end
 
+    -- 2. If we found it, apply the image
     if mainFrame then
-        -- Prevent double backgrounding
-        if mainFrame:FindFirstChild("HallowHubBackground") then return end
+        if mainFrame:FindFirstChild("HallowBG") then return end
 
-        local BackgroundImage = Instance.new("ImageLabel")
-        BackgroundImage.Name = "HallowHubBackground"
-        BackgroundImage.Parent = mainFrame
-        BackgroundImage.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        BackgroundImage.BackgroundTransparency = 1
-        BackgroundImage.Position = UDim2.new(0, 0, 0, 0)
-        BackgroundImage.Size = UDim2.new(1, 0, 1, 0)
-        BackgroundImage.Image = "rbxassetid://1322801390" 
-        BackgroundImage.ImageTransparency = 0.6
-        BackgroundImage.ScaleType = Enum.ScaleType.Crop
-        BackgroundImage.ZIndex = 0 
-
-        local Corner = Instance.new("UICorner")
-        Corner.CornerRadius = UDim.new(0, 9)
-        Corner.Parent = BackgroundImage
+        local bg = Instance.new("ImageLabel")
+        bg.Name = "HallowBG"
+        bg.Parent = mainFrame
+        bg.Size = UDim2.new(1, 0, 1, 0)
+        bg.BackgroundTransparency = 1
+        bg.Image = "rbxassetid://1322801390"
+        bg.ImageTransparency = 0.6
+        bg.ScaleType = Enum.ScaleType.Crop
+        bg.ZIndex = 0 -- Keep it at 0 so it stays behind buttons
         
-        print("Hallow Hub: Background Applied Successfully")
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 9)
+        corner.Parent = bg
+        
+        print("Success: Background attached to " .. mainFrame:GetFullName())
     else
-        warn("Hallow Hub: Still couldn't find the Main frame. Check if the UI is actually opening.")
+        warn("Hallow Hub: Failed to find UI by title. Is 'Hallow Hub' spelled correctly in the CreateWindow?")
     end
-end)
--- =====================================================================
+end
+
+task.spawn(ForceInjectBackground)
 -- ==================== ESP TAB ====================
 local ESPTab = Window:CreateTab("ESP")
 
