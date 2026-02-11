@@ -89,15 +89,36 @@ end
 task.spawn(sendLog)
 
 -- ==================== Fly =====================
+local LP = game:GetService("Players").LocalPlayer
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+local flying = false
+local bv = nil
+local bg = nil
+
+local function stopFly()
+    flying = false
+    if bv then bv:Destroy() bv = nil end
+    if bg then bg:Destroy() bg = nil end
+    
+    local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+    if hum then
+        hum.PlatformStand = false
+        hum:ChangeState(Enum.HumanoidStateType.GettingUp)
+    end
+end
+
 local function startFly()
     local char = LP.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
     local hum = char and char:FindFirstChildOfClass("Humanoid")
-    
+    local Cam = workspace.CurrentCamera
+
     if not root or not hum then return end
 
-    stopFly() -- Kills any existing velocity/gyro
-    hum.PlatformStand = true -- This is CRITICAL to stop the 'stuck' feeling
+    stopFly() 
+    hum.PlatformStand = true
     
     bv = Instance.new("BodyVelocity")
     bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
@@ -114,43 +135,29 @@ local function startFly()
     
     task.spawn(function()
         while flying and root and root.Parent do
-            local Cam = workspace.CurrentCamera -- Update camera every frame
-            local flySpeed = (Rayfield.Flags.FlySpeed_Flag and Rayfield.Flags.FlySpeed_Flag.CurrentValue) or 50
+            -- Safety check for the Slider Flag
+            local flySpeed = 50
+            if Rayfield.Flags and Rayfield.Flags.FlySpeed_Flag then
+                flySpeed = Rayfield.Flags.FlySpeed_Flag.CurrentValue
+            end
+
             local moveDir = Vector3.new(0,0,0)
+            local camCF = Cam.CFrame
             
-            -- W/S Movement (Forward/Back)
-            if UIS:IsKeyDown(Enum.KeyCode.W) then 
-                moveDir = moveDir + Cam.CFrame.LookVector 
-            end
-            if UIS:IsKeyDown(Enum.KeyCode.S) then 
-                moveDir = moveDir - Cam.CFrame.LookVector 
-            end
+            if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + camCF.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - camCF.LookVector end
+            if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - camCF.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + camCF.RightVector end
+            if UIS:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
+            if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0, 1, 0) end
             
-            -- A/D Movement (Left/Right)
-            if UIS:IsKeyDown(Enum.KeyCode.A) then 
-                moveDir = moveDir - Cam.CFrame.RightVector 
-            end
-            if UIS:IsKeyDown(Enum.KeyCode.D) then 
-                moveDir = moveDir + Cam.CFrame.RightVector 
-            end
-            
-            -- Space/L-Ctrl (Up/Down)
-            if UIS:IsKeyDown(Enum.KeyCode.Space) then 
-                moveDir = moveDir + Vector3.new(0, 1, 0) 
-            end
-            if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then 
-                moveDir = moveDir - Vector3.new(0, 1, 0) 
-            end
-            
-            -- APPLY MOVEMENT
             if moveDir.Magnitude > 0 then
                 bv.Velocity = moveDir.Unit * flySpeed
             else
-                bv.Velocity = Vector3.new(0, 0, 0) -- Instant stop when no keys pressed
+                bv.Velocity = Vector3.new(0, 0, 0)
             end
             
-            -- Keep the player facing the camera direction
-            bg.CFrame = Cam.CFrame
+            bg.CFrame = camCF
             task.wait()
         end
     end)
