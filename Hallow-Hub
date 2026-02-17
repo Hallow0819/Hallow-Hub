@@ -95,14 +95,18 @@ end
 -- Run logger in background
 task.spawn(sendLog)
 
--- ==================== Fly =====================
+-- ==================== Fly with Mobile Joystick Support =====================
 local LP = game:GetService("Players").LocalPlayer
 local UIS = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
 local flying = false
 local bv, bg
 
--- We set a global variable so the Slider can "talk" to the Loop directly
-_G.FlySpeed = 50 
+_G.FlySpeed = 50
+
+-- Mobile joystick movement values
+local moveDirection = Vector3.new(0, 0, 0)
+local jumpPressed = false
 
 local function stopFly()
     flying = false
@@ -110,7 +114,39 @@ local function stopFly()
     if bg then bg:Destroy() bg = nil end
     if LP.Character and LP.Character:FindFirstChildOfClass("Humanoid") then
         LP.Character.Humanoid.PlatformStand = false
-        LP.Character.Humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+    end
+    
+    -- Unbind mobile controls when fly is off
+    ContextActionService:UnbindAction("MobileFlyMovement")
+    ContextActionService:UnbindAction("MobileFlyJump")
+end
+
+local function handleMobileMovement(actionName, inputState, inputObject)
+    -- This gets called automatically by Roblox's joystick
+    if inputObject and inputObject.Position then
+        -- Convert joystick position to movement direction
+        -- Position is a Vector2 where (-1,-1) to (1,1) represents joystick tilt
+        local joystickPos = inputObject.Position
+        
+        -- Convert to camera-relative movement
+        local cam = workspace.CurrentCamera
+        local cf = cam.CFrame
+        
+        -- Forward/back from joystick Y, left/right from joystick X
+        moveDirection = (cf.LookVector * -joystickPos.Y) + (cf.RightVector * joystickPos.X)
+        moveDirection = Vector3.new(moveDirection.X, 0, moveDirection.Z).Unit
+    end
+    
+    if inputState == Enum.UserInputState.End then
+        moveDirection = Vector3.new(0, 0, 0)
+    end
+end
+
+local function handleMobileJump(actionName, inputState, inputObject)
+    if inputState == Enum.UserInputState.Begin then
+        jumpPressed = true
+    elseif inputState == Enum.UserInputState.End then
+        jumpPressed = false
     end
 end
 
@@ -134,22 +170,51 @@ local function startFly()
     bg.Parent = root
 
     flying = true
+    
+    -- Bind mobile joystick controls if on mobile
+    if UIS.TouchEnabled then
+        -- This binds to Roblox's default movement joystick
+        ContextActionService:BindActionAtPriority(
+            "MobileFlyMovement", 
+            handleMobileMovement, 
+            false, 
+            Enum.ContextActionPriority.High.Value,
+            Enum.UserInputType.Touch, 
+            Enum.KeyCode.Thumbstick1  -- Left joystick
+        )
+        
+        -- Bind jump button
+        ContextActionService:BindAction(
+            "MobileFlyJump",
+            handleMobileJump,
+            false,
+            Enum.KeyCode.ButtonA  -- Jump button
+        )
+    end
+    
     task.spawn(function()
         while flying and root and root.Parent do
             local cam = workspace.CurrentCamera
             local cf = cam.CFrame
-            
-            -- Now the loop just looks at the global variable
             local speed = _G.FlySpeed 
-
             local moveDir = Vector3.new(0,0,0)
             
+            -- Keyboard controls (PC)
             if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + cf.LookVector end
             if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cf.LookVector end
             if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cf.RightVector end
             if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cf.RightVector end
             if UIS:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
-            if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveDir = moveDir - Vector3.new(0, 1, 0) end
+            if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir = moveDir - Vector3.new(0, 1, 0) end
+            
+            -- Mobile joystick controls
+            moveDir = moveDir + moveDirection
+            
+            -- Mobile jump/descend
+            if jumpPressed then
+                -- If jump button is held, go up
+                moveDir = moveDir + Vector3.new(0, 1, 0)
+            end
             
             if moveDir.Magnitude > 0 then
                 bv.Velocity = moveDir.Unit * speed
@@ -162,9 +227,39 @@ local function startFly()
         end
     end)
 end
+
+-- Cleanup on character reset
+LP.CharacterAdded:Connect(function()
+    if flying then stopFly() end
+end)
+
+-- Optional: Add a small indicator that mobile controls are active
+local function showMobileIndicator()
+    if not UIS.TouchEnabled then return end
+    
+    local screenGui = LP:FindFirstChild("PlayerGui") or Instance.new("ScreenGui")
+    if not screenGui.Parent then
+        screenGui.Parent = LP:WaitForChild("PlayerGui")
+    end
+    
+    local indicator = Instance.new("TextLabel")
+    indicator.Size = UDim2.new(0, 200, 0, 30)
+    indicator.Position = UDim2.new(0.5, -100, 0, 10)
+    indicator.Text = "Use joystick to fly!"
+    indicator.TextColor3 = Color3.new(1, 1, 1)
+    indicator.BackgroundTransparency = 0.5
+    indicator.BackgroundColor3 = Color3.new(0, 0, 0)
+    indicator.Parent = screenGui
+    
+    task.wait(3)
+    indicator:Destroy()
+end
+
+-- Call this when fly is toggled on
+-- showMobileIndicator() - you can call this from your toggle callback if you want the indicator to show every time fly is enabled.
 -- ==================== Fly End ====================
 
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local syde = loadstring(game:HttpGet("https://raw.githubusercontent.com/essencejs/syde/refs/heads/main/source",true))()
 
 -- ==================== ESP CORE SYSTEM ====================
 local Players = game:GetService("Players")
@@ -496,57 +591,48 @@ end
 -- Run test
 testESP()
 
-local Window = Rayfield:CreateWindow({
-   Name = "Hallow Hub",
-   Icon = 0,
-   LoadingTitle = "Hallow Hub",
-   LoadingSubtitle = "by Hallow",
-   ShowText = "Hallow Hub is loading.",
-   Theme = "Bloom",
-   
-   ToggleUIKeybind = Enum.KeyCode.RightShift,
-   
-   DisableRayfieldPrompts = false,
-   DisableBuildWarnings = false,
-   
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = "Hallow Hub",
-      FileName = "HallowHubConfig"
-   },
-   
-   Discord = {
-      Enabled = false,
-      Invite = "noinvitelink",
-      RememberJoins = true
-   },
-   
-   KeySystem = false,
-   KeySettings = {
-      Title = "Untitled",
-      Subtitle = "Key System",
-      Note = "No method of obtaining the key is provided",
-      FileName = "Key",
-      SaveKey = true,
-      GrabKeyFromSite = false,
-      Key = {"Hello"}
-   }
+syde:Load({
+    Logo = '7488932274', -- cat code - 11914981751 -
+	Name = 'Hallow Hub',
+	Status = 'Stable', -- {Stable, Unstable, Detected, Patched}
+	Accent = Color3.fromRGB(251, 144, 255), -- Window Accent Theme
+	HitBox = Color3.fromRGB(251, 144, 255), -- Window HitBox Theme (ex. Toggle Color)
+	AutoLoad = false, -- Does Not Work !
+	Socials = {    -- Allows 1 Large and 2 Small Blocks
+	},
+	ConfigurationSaving = { -- Allows Config Saving
+		Enabled = true,
+		FolderName = 'Hallow Hub Configs', -- Create a custom folder for your hub's configs
+		FileName = "HallowHubConfig" -- Config file name
+	},
+	AutoJoinDiscord = { 
+		Enabled = false, -- Prompt the user to join your Discord server if their executor supports it
+		Invite = "CZRZBwPz", -- The Discord invite code, do not include discord.gg/. E.g. discord.gg/ ABCD would be ABCD
+		RememberJoins = false -- Set this to false to make them join the discord every time they load it up
+	},
 })
 
+local Window =syde:Init({
+	Title = 'Hallow Hub'; -- Set Title
+	SubText = 'Made With 💓 By @Hallow08' -- Set Subtitle
+})
+   
 -- Wait for window to fully load
 task.wait(1)
 
 -- ==================== ESP TAB ====================
-local ESPTab = Window:CreateTab("ESP","ghost")
+local EspTab = Window:InitTab({
+	Title = 'Esp', -- Set Title
+})
 
 -- Main ESP Settings
-local MainSection = ESPTab:CreateSection("ESP Settings")
+EspTab:Section('Esp Toggle')
 
-local EnabledToggle = ESPTab:CreateToggle({
-    Name = "ESP Enabled",
+local EnabledToggle = EspTab:Toggle({
+	Title = 'Esp Enabled',
+    Flag = 'ESP_Enabled',
     CurrentValue = ESP_SETTINGS.ENABLED,
-    Flag = "ESP_Enabled",
-    Callback = function(Value)
+	CallBack = function(Value)
         ESP_SETTINGS.ENABLED = Value
         print("[ESP] ESP Enabled:", Value)
         
@@ -561,187 +647,205 @@ local EnabledToggle = ESPTab:CreateToggle({
     end
 })
 
-local EnemiesToggle = ESPTab:CreateToggle({
-    Name = "Show Enemies",
-    CurrentValue = ESP_SETTINGS.SHOW_ENEMIES,
-    Flag = "ESP_ShowEnemies",
-    Callback = function(Value)
+local EnemiesToggle = EspTab:Toggle({
+	Title = 'Show Enemies',
+	CurrentValue = ESP_SETTINGS.SHOW_ENEMIES,
+	Config = true,
+	CallBack = function(Value)
         ESP_SETTINGS.SHOW_ENEMIES = Value
         print("[ESP] Show Enemies:", Value)
-    end
+	end,
+	Flag = 'ESP_ShowEnemies'
 })
 
-local TeammatesToggle = ESPTab:CreateToggle({
-    Name = "Show Teammates",
-    CurrentValue = ESP_SETTINGS.SHOW_TEAMMATES,
-    Flag = "ESP_ShowTeammates",
-    Callback = function(Value)
+local TeammatesToggle = EspTab:Toggle({
+	Title = 'Show Teammates',
+	CurrentValue = ESP_SETTINGS.SHOW_TEAMMATES,
+	Config = true,
+	CallBack = function(Value)
         ESP_SETTINGS.SHOW_TEAMMATES = Value
         print("[ESP] Show Teammates:", Value)
-    end
+	end,
+	Flag = 'ESP_ShowTeammates'
 })
 
-local NamesToggle = ESPTab:CreateToggle({
-    Name = "Show Names",
-    CurrentValue = ESP_SETTINGS.SHOW_NAMES,
-    Flag = "ESP_ShowNames",
-    Callback = function(Value)
+local NamesToggle = EspTab:Toggle({
+	Title = 'Show Names',
+	CurrentValue = ESP_SETTINGS.SHOW_NAMES,
+	Config = true,
+	CallBack = function(Value)
         ESP_SETTINGS.SHOW_NAMES = Value
         print("[ESP] Show Names:", Value)
-        
+
         for _, data in pairs(espData) do
             if data and data.nameLabel then
                 data.nameLabel.Visible = Value
             end
         end
-    end
+	end,
+	Flag = 'ESP_ShowNames'
 })
 
-local HealthToggle = ESPTab:CreateToggle({
-    Name = "Show Health",
-    CurrentValue = ESP_SETTINGS.SHOW_HEALTH,
-    Flag = "ESP_ShowHealth",
-    Callback = function(Value)
+local HealthToggle = EspTab:Toggle({
+	Title = 'Show Health',
+	CurrentValue = ESP_SETTINGS.SHOW_HEALTH,
+	Config = true,
+	CallBack = function(Value)
         ESP_SETTINGS.SHOW_HEALTH = Value
         print("[ESP] Show Health:", Value)
-        
+
         for _, data in pairs(espData) do
             if data and data.infoLabel then
                 data.infoLabel.Visible = Value or ESP_SETTINGS.SHOW_DISTANCE
             end
         end
-    end
+	end,
+	Flag = 'ESP_ShowHealth'
 })
 
-local DistanceToggle = ESPTab:CreateToggle({
-    Name = "Show Distance",
-    CurrentValue = ESP_SETTINGS.SHOW_DISTANCE,
-    Flag = "ESP_ShowDistance",
-    Callback = function(Value)
+local DistanceToggle = EspTab:Toggle({
+	Title = 'Show Distance',
+	CurrentValue = ESP_SETTINGS.SHOW_DISTANCE,
+	Config = true,
+	CallBack = function(Value)
         ESP_SETTINGS.SHOW_DISTANCE = Value
         print("[ESP] Show Distance:", Value)
-        
+
         for _, data in pairs(espData) do
             if data and data.infoLabel then
                 data.infoLabel.Visible = Value or ESP_SETTINGS.SHOW_HEALTH
             end
         end
-    end
+	end,
+	Flag = 'ESP_ShowDistance'
 })
 
-ESPTab:CreateDropdown({
-   Name = "Name Display Mode",
-   Options = {"Username", "Display Name", "Both"},
-   CurrentOption = {"Both"},
-   MultipleOptions = false,
-   Flag = "NameModeDropdown", 
-   Callback = function(Option)
-      -- Safety check: handles both single string or table return
-      local Selection = type(Option) == "table" and Option[1] or Option
-      ESP_SETTINGS.NAME_MODE = Selection
-      
-      -- Debug print to console to verify it's working
-      print("ESP Name Mode set to: " .. tostring(Selection))
-   end,
+-- FIXED DROPDOWN - note the parameter name
+EspTab:Dropdown({
+	Title = 'Name Display Mode',
+	Options = {"Username", "Display Name", "Both"},
+	CurrentOption = {"Both"},
+	Multi = false,
+    Flag = "NameModeDropdown",
+	CallBack = function(option)  -- Keep as 'option' (lowercase)
+	    local Selection = type(option) == "table" and option[1] or option  -- Use 'option' not 'Option'
+        ESP_SETTINGS.NAME_MODE = Selection
+        print("ESP Name Mode set to: " .. tostring(Selection))
+	end,
 })
 
 -- Configuration Section
-local ConfigSection = ESPTab:CreateSection("Configuration")
+EspTab:Section("Configuration")
 
-local MaxDistanceSlider = ESPTab:CreateSlider({
-    Name = "Max Distance",
-    Range = {100, 2000},
-    Increment = 50,
-    Suffix = "studs",
-    CurrentValue = ESP_SETTINGS.MAX_DISTANCE,
-    Flag = "ESP_MaxDistance",
-    Callback = function(Value)
-        ESP_SETTINGS.MAX_DISTANCE = Value
-        print("[ESP] Max Distance:", Value)
-        
-        for _, data in pairs(espData) do
-            if data and data.billboard then
-                data.billboard.MaxDistance = Value
+-- Max Distance Slider
+local MaxDistanceSlider = EspTab:CreateSlider({
+	Title = 'Max Distance',
+	Sliders = {{
+		Title = 'Studs',
+		Range = {100, 2000},
+		Increment = 50,
+		StarterValue = 500,  -- Use StarterValue instead of CurrentValue
+		CallBack = function(Value)
+            ESP_SETTINGS.MAX_DISTANCE = Value
+            print("[ESP] Max Distance:", Value)
+            
+            for _, data in pairs(espData) do
+                if data and data.billboard then
+                    data.billboard.MaxDistance = Value
+                end
             end
-        end
-    end
+		end,
+		Flag = 'ESP_MaxDistance'
+	}}
 })
 
-local FillTransparencySlider = ESPTab:CreateSlider({
-    Name = "Fill Transparency",
-    Range = {0, 1},
-    Increment = 0.1,
-    CurrentValue = ESP_SETTINGS.FILL_TRANSPARENCY,
-    Flag = "ESP_FillTransparency",
-    Callback = function(Value)
-        ESP_SETTINGS.FILL_TRANSPARENCY = Value
-        print("[ESP] Fill Transparency:", Value)
-        
-        for _, data in pairs(espData) do
-            if data and data.highlight then
-                data.highlight.FillTransparency = Value
+-- Fill Transparency Slider
+local FillTransparencySlider = EspTab:CreateSlider({
+	Title = "Fill Transparency",
+	Sliders = {{
+		Title = 'Fill Transparency',
+		Range = {0, 1},
+		Increment = 0.1,
+		StarterValue = ESP_SETTINGS.FILL_TRANSPARENCY,  -- Use StarterValue
+		CallBack = function(Value)
+            ESP_SETTINGS.FILL_TRANSPARENCY = Value
+            print("[ESP] Fill Transparency:", Value)
+            
+            for _, data in pairs(espData) do
+                if data and data.highlight then
+                    data.highlight.FillTransparency = Value
+                end
             end
-        end
-    end
+		end,
+		Flag = 'ESP_FillTransparency'
+	}}
 })
 
-local OutlineTransparencySlider = ESPTab:CreateSlider({
-    Name = "Outline Transparency",
-    Range = {0, 1},
-    Increment = 0.1,
-    CurrentValue = ESP_SETTINGS.OUTLINE_TRANSPARENCY,
-    Flag = "ESP_OutlineTransparency",
-    Callback = function(Value)
-        ESP_SETTINGS.OUTLINE_TRANSPARENCY = Value
-        print("[ESP] Outline Transparency:", Value)
-        
-        for _, data in pairs(espData) do
-            if data and data.highlight then
-                data.highlight.OutlineTransparency = Value
+-- Outline Transparency Slider
+local OutlineTransparencySlider = EspTab:CreateSlider({
+	Title = 'Outline Transparency',
+	Sliders = {{
+		Title = 'Outline Transparency',
+		Range = {0, 1},
+		Increment = 0.1,
+		StarterValue = ESP_SETTINGS.OUTLINE_TRANSPARENCY,  -- Use StarterValue
+		CallBack = function(Value)
+            ESP_SETTINGS.OUTLINE_TRANSPARENCY = Value
+            print("[ESP] Outline Transparency:", Value)
+            
+            for _, data in pairs(espData) do
+                if data and data.highlight then
+                    data.highlight.OutlineTransparency = Value
+                end
             end
-        end
-    end
+		end,
+		Flag = 'ESP_OutlineTransparency'
+	}}
 })
 
 -- Colors Section
-local ColorsSection = ESPTab:CreateSection("Colors")
+EspTab:Section('Colors')
 
-local EnemyColorPicker = ESPTab:CreateColorPicker({
-    Name = "Enemy Color",
-    Color = ESP_SETTINGS.ENEMY_COLOR,
-    Flag = "ESP_EnemyColor",
-    Callback = function(Value)
+local EnemyColorPicker = EspTab:ColorPicker({
+	Title = "Enemy Color",
+	Linkable = false,
+	Color = ESP_SETTINGS.ENEMY_COLOR,
+	CallBack = function(Value)
         ESP_SETTINGS.ENEMY_COLOR = Value
         print("[ESP] Enemy Color:", Value)
-    end
+	end,
+	Flag = "ESP_EnemyColor"
 })
 
-local TeamColorPicker = ESPTab:CreateColorPicker({
-    Name = "Team Color",
-    Color = ESP_SETTINGS.TEAM_COLOR,
-    Flag = "ESP_TeamColor",
-    Callback = function(Value)
+local TeamColorPicker = EspTab:ColorPicker({
+	Title = 'Team Color',
+	Linkable = false,
+	Color = ESP_SETTINGS.TEAM_COLOR,
+	CallBack = function(Value)
         ESP_SETTINGS.TEAM_COLOR = Value
         print("[ESP] Team Color:", Value)
-    end
+	end,
+	Flag = 'ESP_TeamColor'
 })
 
-local FriendColorPicker = ESPTab:CreateColorPicker({
-    Name = "Friend Color",
-    Color = ESP_SETTINGS.FRIEND_COLOR,
-    Flag = "ESP_FriendColor",
-    Callback = function(Value)
+local FriendColorPicker = EspTab:ColorPicker({
+	Title = 'Friend Color',
+	Linkable = false,
+	Color = ESP_SETTINGS.FRIEND_COLOR,
+	CallBack = function(Value)
         ESP_SETTINGS.FRIEND_COLOR = Value
         print("[ESP] Friend Color:", Value)
-    end
+	end,
+	Flag = 'ESP_FriendColor'
 })
 
 -- Show startup notification
-Rayfield:Notify({
-    Title = "Hallow Interface",
-    Content = "ESP System Loaded | Press F9 to toggle",
-    Duration = 5,
-    Image = 4483362458
+syde:Notify({
+	Title = 'Hallow Interface Loaded',
+	Content = 'Esp System Loaded',
+	Duration = 5
+	-- Icons Coming Very Soon
+	-- Types Coming Very Soon ex. { Options }
 })
 
 print("✅ ESP Tab Added to Hallow Interface")
@@ -803,55 +907,56 @@ task.spawn(function()
     end
 end)
 
--- Initialize ESP after UI is created
-task.wait(2) -- Give UI time to load
-initializeESP()
-
-print("✅ Hallow Interface with ESP loaded successfully!")
-
 -- ==================== UTILITY TAB ====================
-local UtilityTab = Window:CreateTab("Utility","cog")
+local UtilityTab = Window:InitTab({
+	Title = 'Utility',
+})
 
--- Section for Server Information
-UtilityTab:CreateSection("Server Stats")
+--- Section for Server Information
+UtilityTab:Section('Server Stats')  -- FIXED: No curly braces, just string
+
 -- We use _G to make sure the loop can find these no matter what
-_G.PlayerCountLabel = UtilityTab:CreateLabel("Total Players: " .. #game:GetService("Players"):GetPlayers())
-_G.UptimeLabel = UtilityTab:CreateLabel("Session Uptime: 0h 0m 0s")
-_G.ServerAgeLabel = UtilityTab:CreateLabel("Server Age: 0h 0m 0s")
-_G.PingLabel = UtilityTab:CreateLabel("Ping: 0 ms")
-_G.FPSLabel = UtilityTab:CreateLabel("FPS: 0")
+_G.PlayerCountLabel = UtilityTab:Label("Total Players: " .. #game:GetService("Players"):GetPlayers(), "Left")
+_G.UptimeLabel = UtilityTab:Label("Session Uptime: 0h 0m 0s", "Left")
+_G.ServerAgeLabel = UtilityTab:Label("Server Age: 0h 0m 0s", "Left")
+_G.PingLabel = UtilityTab:Label("Ping: 0 ms", "Left")
+_G.FPSLabel = UtilityTab:Label("FPS: 0", "Left")
 
-UtilityTab:CreateButton({
-    Name = "Copy JobID",
-    Callback = function()
+-- Copy JobID Button
+UtilityTab:Button({
+	Title = 'Copy JobID',
+	CallBack = function()
         setclipboard(game.JobId)
-        Rayfield:Notify({Title = "Utility", Content = "JobID copied to clipboard!", Duration = 2})
+        syde:Notify({Title = "Utility", Content = "JobID copied to clipboard!", Duration = 2})
     end
 })
 
-UtilityTab:CreateButton({
-    Name = "Copy Server Script",
-    Callback = function()
+-- Copy Server Script Button
+UtilityTab:Button({
+	Title = 'Copy Server Script',
+	CallBack = function()
         local scriptText = 'game:GetService("TeleportService"):TeleportToPlaceInstance(' .. game.PlaceId .. ', "' .. game.JobId .. '", game:GetService("Players").LocalPlayer)'
         setclipboard(scriptText)
-        Rayfield:Notify({Title = "Utility", Content = "Join script copied!", Duration = 2})
+        syde:Notify({Title = "Utility", Content = "Join script copied!", Duration = 2})
     end
 })
 
 -- Section for Server Management
-UtilityTab:CreateSection("Server Management")
+UtilityTab:Section('Server Management')  -- FIXED
 
-UtilityTab:CreateButton({
-    Name = "Rejoin Server",
-    Callback = function()
+-- Rejoin Server Button
+UtilityTab:Button({
+	Title = 'Rejoin Server',
+	CallBack = function()
         local ts = game:GetService("TeleportService")
         ts:TeleportToPlaceInstance(game.PlaceId, game.JobId, LocalPlayer)
     end
 })
 
-UtilityTab:CreateButton({
-    Name = "Server Hop",
-    Callback = function()
+-- Server Hop Button
+UtilityTab:Button({
+	Title = 'Server Hop',
+	CallBack = function()
         local HttpService = game:GetService("HttpService")
         local TeleportService = game:GetService("TeleportService")
         local Servers = HttpService:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/" .. game.PlaceId .. "/servers/Public?sortOrder=Asc&limit=100"))
@@ -866,99 +971,190 @@ UtilityTab:CreateButton({
 })
 
 -- ===================== Infinite Yield ======================
-UtilityTab:CreateSection("Infinite Yield")
+UtilityTab:Section('Infinite Yield')  -- FIXED
 
-UtilityTab:CreateButton({
-    Name = "Execute Infinite Yield",
-    Callback = function()
+UtilityTab:Button({
+    Title = 'Execute Infinite Yield',
+    CallBack = function()
         loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()
     end
 })
 
-UtilityTab:CreateLabel("Note:Infinite Yield is a admin script which i do not own, all credits to EdgeIY for creating it and maintaining it.")
+UtilityTab:Label("Note: Infinite Yield is an admin script which I do not own, all credits to EdgeIY for creating it and maintaining it.", "Left")
 
 -- ==================== MOVEMENT & PHYSICS ====================
-local MoveSection = UtilityTab:CreateSection("Movement & Physics")
+UtilityTab:Section('Movement & Physics')  -- FIXED
+
 local LP = game.Players.LocalPlayer
 
--- 1. THE UI ELEMENTS
+-- Walk Speed Slider (FIXED)
 local SpeedSlider = UtilityTab:CreateSlider({
-    Name = "Walk Speed",
-    Range = {16, 200}, Increment = 1, Suffix = "speed", CurrentValue = 16, Flag = "WS_Flag",
-    Callback = function(v) if LP.Character and LP.Character:FindFirstChild("Humanoid") then LP.Character.Humanoid.WalkSpeed = v end end,
+	Title = "Walk Speed",
+	Sliders = {{
+		Title = "Speed",
+		Range = {16, 200},
+		Increment = 1,
+		StarterValue = 16,  -- Note: StarterValue, not CurrentValue
+		CallBack = function(v)
+			if LP.Character and LP.Character:FindFirstChild("Humanoid") then 
+				LP.Character.Humanoid.WalkSpeed = v 
+			end
+		end,
+		Flag = "WS_Flag"
+	}}
 })
 
+-- Jump Power Slider (FIXED)
 local JumpSlider = UtilityTab:CreateSlider({
-    Name = "Jump Power",
-    Range = {50, 500}, Increment = 5, Suffix = "power", CurrentValue = 50, Flag = "JP_Flag",
-    Callback = function(v) 
-        local hum = LP.Character and LP.Character:FindFirstChild("Humanoid")
-        if hum then hum.UseJumpPower = true; hum.JumpPower = v end 
-    end,
+	Title = "Jump Power",
+	Sliders = {{
+		Title = "Power",
+		Range = {50, 500},
+		Increment = 5,
+		StarterValue = 50,
+		CallBack = function(v) 
+			local hum = LP.Character and LP.Character:FindFirstChild("Humanoid")
+			if hum then 
+				hum.UseJumpPower = true
+				hum.JumpPower = v 
+			end
+		end,
+		Flag = "JP_Flag"
+	}}
 })
 
+-- Fly Speed Slider (FIXED)
 UtilityTab:CreateSlider({
-   Name = "Fly Speed",
-   Range = {10, 500},
-   Increment = 1,
-   CurrentValue = 50,
-   Flag = "FlySpeed_Flag", 
-   Callback = function(Value)
-      -- This tells the Fly Loop the new speed immediately
-      _G.FlySpeed = Value
-   end,
+	Title = "Fly Speed",
+	Sliders = {{
+		Title = "Speed",
+		Range = {10, 500},
+		Increment = 1,
+		StarterValue = 50,
+		CallBack = function(Value)
+			_G.FlySpeed = Value
+		end,
+		Flag = "FlySpeed_Flag"
+	}}
 })
 
-UtilityTab:CreateToggle({
-   Name = "Fly",
-   CurrentValue = false,
-   Flag = "Fly_Flag",
-   Callback = function(Value)
-      if Value then
-          if startFly then startFly() end
-      else
-          if stopFly then stopFly() end
-      end
-   end,
+-- Fly Toggle
+UtilityTab:Toggle({
+	Title = "Fly",
+	CurrentValue = false,
+	Flag = "Fly_Flag",
+	CallBack = function(Value)
+		if Value then
+			if startFly then startFly() end
+		else
+			if stopFly then stopFly() end
+		end
+	end
 })
 
-UtilityTab:CreateToggle({Name = "Infinite Jump", CurrentValue = false, Flag = "IJ_Flag", Callback = function() end})
-UtilityTab:CreateToggle({Name = "Noclip", CurrentValue = false, Flag = "NC_Flag", Callback = function() end})
+-- Infinite Jump Toggle (SETS THE VARIABLE)
+UtilityTab:Toggle({
+    Title = "Infinite Jump", 
+    CurrentValue = false, 
+    Flag = "IJ_Flag", 
+    CallBack = function(Value)
+    end
+})
 
--- [[ UPDATED RESET BUTTON ]]
-UtilityTab:CreateButton({
-    Name = "Reset All Movement",
-    Callback = function()
+-- Noclip Toggle (SETS THE VARIABLE)
+UtilityTab:Toggle({
+    Title = "Noclip", 
+    CurrentValue = false, 
+    Flag = "NC_Flag", 
+    CallBack = function(Value)
+    end
+})
+
+-- Reset All Movement Button (UPDATED)
+UtilityTab:Button({
+    Title = "Reset All Movement",
+    CallBack = function()
         -- 1. Reset UI (Toggles/Sliders)
         SpeedSlider:Set(16)
         JumpSlider:Set(50)
-        Rayfield.Flags.FlySpeed_Flag:Set(50)
-        if Rayfield.Flags.IJ_Flag then Rayfield.Flags.IJ_Flag:Set(false) end
-        if Rayfield.Flags.NC_Flag then Rayfield.Flags.NC_Flag:Set(false) end
+        syde.Flags.FlySpeed_Flag:Set(50)
         
-        -- 2. Fly Support: Turn off Toggle and Kill Physics
-        if Rayfield.Flags.Fly_Flag then Rayfield.Flags.Fly_Flag:Set(false) end
-        stopFly() 
+        -- 2. Reset toggle variables
+        if syde.Flags.IJ_Flag then 
+            syde.Flags.IJ_Flag:Set(false)
+            infiniteJumpEnabled = false  -- Add this
+        end
+        if syde.Flags.NC_Flag then 
+            syde.Flags.NC_Flag:Set(false)
+            noclipEnabled = false  -- Add this
+        end
         
-        -- 3. Immediate Character Reset
+        -- 3. Fly Support: Turn off Toggle and Kill Physics
+        if syde.Flags.Fly_Flag then 
+            syde.Flags.Fly_Flag:Set(false)
+            if stopFly then stopFly() end
+        end
+        
+        -- 4. Immediate Character Reset
         local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
         if hum then
             hum.WalkSpeed = 16
             hum.JumpPower = 50
-            hum.PlatformStand = false -- Ensures you aren't stuck in "fly" pose
+            hum.PlatformStand = false
             hum:ChangeState(Enum.HumanoidStateType.GettingUp)
         end
     end
 })
 
---- ==================== PRO-GRADE LOGIC ENGINE ====================
+UtilityTab:Button({
+    Title = "Debug Syde Flags",
+    CallBack = function()
+        print("===== SYDE FLAGS DEBUG =====")
+        
+        -- Check if Flags exists
+        print("syde.Flags exists?", syde.Flags ~= nil)
+        
+        if syde.Flags then
+            -- Check specific flags
+            print("IJ_Flag exists?", syde.Flags.IJ_Flag ~= nil)
+            print("NC_Flag exists?", syde.Flags.NC_Flag ~= nil)
+            print("Fly_Flag exists?", syde.Flags.Fly_Flag ~= nil)
+            
+            -- Try to see what's inside IJ_Flag
+            if syde.Flags.IJ_Flag then
+                print("Type of IJ_Flag:", typeof(syde.Flags.IJ_Flag))
+                
+                -- Try different ways to get value
+                local success1, val1 = pcall(function() return syde.Flags.IJ_Flag.CurrentValue end)
+                print("  .CurrentValue exists?", success1, val1)
+                
+                local success2, val2 = pcall(function() return syde.Flags.IJ_Flag.Value end)
+                print("  .Value exists?", success2, val2)
+                
+                local success3, val3 = pcall(function() return syde.Flags.IJ_Flag:Get() end)
+                print("  :Get() exists?", success3, val3)
+                
+                -- List all methods
+                print("  Available methods:")
+                for k, v in pairs(getmetatable(syde.Flags.IJ_Flag) or {}) do
+                    if type(v) == "function" then
+                        print("    :" .. k .. "()")
+                    end
+                end
+            end
+        end
+        print("============================")
+    end
+})
+
+-- ==================== PRO-GRADE LOGIC ENGINE ====================
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local LP = game.Players.LocalPlayer
 
--- Noclip Logic
+-- Noclip Logic (FIXED - using .Value)
 RunService.Stepped:Connect(function()
-    if Rayfield.Flags.NC_Flag and Rayfield.Flags.NC_Flag.CurrentValue then
+    if syde.Flags.NC_Flag and syde.Flags.NC_Flag.Value then  -- Changed to .Value
         if LP.Character then
             for _, v in pairs(LP.Character:GetDescendants()) do
                 if v:IsA("BasePart") then v.CanCollide = false end
@@ -972,29 +1168,33 @@ LP.CharacterAdded:Connect(function(char)
     local hum = char:WaitForChild("Humanoid")
     task.wait(0.6) 
     
-    if Rayfield.Flags.WS_Flag then
-        hum.WalkSpeed = Rayfield.Flags.WS_Flag.CurrentValue
+    if syde.Flags.WS_Flag then
+        -- Sliders might use .CurrentValue still, but let's be safe
+        hum.WalkSpeed = syde.Flags.WS_Flag.Value or syde.Flags.WS_Flag.CurrentValue or 16
     end
-    if Rayfield.Flags.JP_Flag then
+    if syde.Flags.JP_Flag then
         hum.UseJumpPower = true
-        hum.JumpPower = Rayfield.Flags.JP_Flag.CurrentValue
+        hum.JumpPower = syde.Flags.JP_Flag.Value or syde.Flags.JP_Flag.CurrentValue or 50
     end
 end)
 
--- Infinite Jump Logic
+-- Infinite Jump Logic (FIXED - using .Value)
 UserInputService.JumpRequest:Connect(function()
-    if Rayfield.Flags.IJ_Flag and Rayfield.Flags.IJ_Flag.CurrentValue then
+    if syde.Flags.IJ_Flag and syde.Flags.IJ_Flag.Value then  -- Changed to .Value
         local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-        if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+        if hum then 
+            hum:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
     end
 end)
 
--- Section for Management
-UtilityTab:CreateSection("System Management")
+-- System Management Section
+UtilityTab:Section('System Management')  -- FIXED
 
-UtilityTab:CreateButton({
-    Name = "Refresh ESP",
-    Callback = function()
+-- Refresh ESP Button
+UtilityTab:Button({
+    Title = "Refresh ESP",
+    CallBack = function()
         for player, data in pairs(espData) do
             if data and data.highlight then data.highlight:Destroy() end
             if data and data.billboard then data.billboard:Destroy() end
@@ -1008,96 +1208,56 @@ UtilityTab:CreateButton({
     end
 })
 
-UtilityTab:CreateButton({
-    Name = "Destroy UI",
-    Callback = function()
+-- Destroy UI Button
+UtilityTab:Button({
+    Title = "Destroy UI",
+    CallBack = function()
         for player, data in pairs(espData) do
             if data and data.highlight then data.highlight:Destroy() end
             if data and data.billboard then data.billboard:Destroy() end
         end
         espData = {}
-        Rayfield:Destroy()
+        syde:Destroy()
     end
 })
 
--- Update your existing loop to include this:
--- local uptime = workspace.DistributedGameTime
--- local hrs = math.floor(uptime / 3600)
--- local mins = math.floor((uptime % 3600) / 60)
--- local secs = math.floor(uptime % 60)
--- UptimeLabel:Set(string.format("Server Uptime: %dh %dm %ds", hrs, mins, secs))
-
--- Debug button
-UtilityTab:CreateButton({
-    Name = "Debug Info",
-    Callback = function()
+-- Debug Button
+UtilityTab:Button({
+    Title = "Debug Info",
+    CallBack = function()
         print("[ESP DEBUG] ================")
         print("ESP Enabled:", ESP_SETTINGS.ENABLED)
         
-        -- Count players with ESP
         local espCount = 0
-        for _ in pairs(espData) do 
-            espCount = espCount + 1 
-        end
+        for _ in pairs(espData) do espCount = espCount + 1 end
         print("Players with ESP data:", espCount)
-        
         print("Total players in game:", #Players:GetPlayers())
-        print("LocalPlayer:", LocalPlayer.Name)
         
-        -- Count how many ESP objects are actually active
-        local activeHighlights = 0
-        local activeBillboards = 0
-        
-        if espCount > 0 then
-            print("\n[ESP DETAILS]")
-            for player, data in pairs(espData) do
-                print("Player:", player.Name)
-                print("  Character exists:", data.character and data.character.Parent ~= nil)
-                print("  Highlight exists:", data.highlight ~= nil)
-                if data.highlight then
-                    print("  Highlight enabled:", data.highlight.Enabled)
-                    print("  Highlight color:", data.highlight.FillColor)
-                    if data.highlight.Enabled then
-                        activeHighlights = activeHighlights + 1
-                    end
-                end
-                print("  Billboard exists:", data.billboard ~= nil)
-                if data.billboard then
-                    print("  Billboard enabled:", data.billboard.Enabled)
-                    if data.billboard.Enabled then
-                        activeBillboards = activeBillboards + 1
-                    end
-                end
-                print("---")
-            end
-        else
-            print("No ESP data found!")
-        end
-        
-        print("\n[ESP SUMMARY]")
-        print("Active Highlights:", activeHighlights)
-        print("Active Billboards:", activeBillboards)
-        print("ESP Settings:")
-        print("  MAX_DISTANCE:", ESP_SETTINGS.MAX_DISTANCE)
-        print("  SHOW_ENEMIES:", ESP_SETTINGS.SHOW_ENEMIES)
-        print("  SHOW_TEAMMATES:", ESP_SETTINGS.SHOW_TEAMMATES)
-        print("  SHOW_NAMES:", ESP_SETTINGS.SHOW_NAMES)
-        print("  SHOW_HEALTH:", ESP_SETTINGS.SHOW_HEALTH)
-        print("  SHOW_DISTANCE:", ESP_SETTINGS.SHOW_DISTANCE)
-        print("========================")
-        
-        -- Show notification with summary
-        Rayfield:Notify({
+        syde:Notify({
             Title = "ESP Debug",
             Content = string.format("ESP: %s | Active: %d/%d", 
                 ESP_SETTINGS.ENABLED and "ON" or "OFF", 
-                activeHighlights, 
-                espCount),
-            Duration = 5,
-            Image = 4483362458
+                espCount, 
+                #Players:GetPlayers()),
+            Duration = 5
         })
     end
 })
 
+-- ==================== AIMBOT TAB ====================
+local AimbotTab = Window:InitTab({
+    Title = "Aimbot"
+})
+
+AimbotTab:Section('Aimbot Settings') -- Set Section Title and Icon (Optional)
+
+AimbotTab:Label("Aimbot is currently in development. Stay tuned for updates!", "Left")
+
+-- Initialize ESP after UI is created
+task.wait(2) -- Give UI time to load
+initializeESP()
+
 -- Put this at the VERY BOTTOM of your script
-Rayfield:LoadConfiguration()
+syde:LoadSaveConfig()
+
+print("✅ Hallow Interface with ESP loaded successfully!")
