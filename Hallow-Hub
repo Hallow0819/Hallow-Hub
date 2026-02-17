@@ -983,6 +983,23 @@ UtilityTab:Section('Movement & Physics')  -- FIXED
 
 local LP = game.Players.LocalPlayer
 
+-- Camera FOV Slider
+UtilityTab:CreateSlider({
+    Title = "Camera FOV",
+    Sliders = {{
+        Title = "FOV",
+        Range = {30, 120},
+        Increment = 1,
+        StarterValue = 70,
+        CallBack = function(Value)
+            if workspace.CurrentCamera then
+                workspace.CurrentCamera.FieldOfView = Value
+            end
+        end,
+        Flag = "FOV_Flag"
+    }}
+})
+
 -- Walk Speed Slider (FIXED)
 local SpeedSlider = UtilityTab:CreateSlider({
 	Title = "Walk Speed",
@@ -1103,47 +1120,6 @@ UtilityTab:Button({
     end
 })
 
-UtilityTab:Button({
-    Title = "Debug Syde Flags",
-    CallBack = function()
-        print("===== SYDE FLAGS DEBUG =====")
-        
-        -- Check if Flags exists
-        print("syde.Flags exists?", syde.Flags ~= nil)
-        
-        if syde.Flags then
-            -- Check specific flags
-            print("IJ_Flag exists?", syde.Flags.IJ_Flag ~= nil)
-            print("NC_Flag exists?", syde.Flags.NC_Flag ~= nil)
-            print("Fly_Flag exists?", syde.Flags.Fly_Flag ~= nil)
-            
-            -- Try to see what's inside IJ_Flag
-            if syde.Flags.IJ_Flag then
-                print("Type of IJ_Flag:", typeof(syde.Flags.IJ_Flag))
-                
-                -- Try different ways to get value
-                local success1, val1 = pcall(function() return syde.Flags.IJ_Flag.CurrentValue end)
-                print("  .CurrentValue exists?", success1, val1)
-                
-                local success2, val2 = pcall(function() return syde.Flags.IJ_Flag.Value end)
-                print("  .Value exists?", success2, val2)
-                
-                local success3, val3 = pcall(function() return syde.Flags.IJ_Flag:Get() end)
-                print("  :Get() exists?", success3, val3)
-                
-                -- List all methods
-                print("  Available methods:")
-                for k, v in pairs(getmetatable(syde.Flags.IJ_Flag) or {}) do
-                    if type(v) == "function" then
-                        print("    :" .. k .. "()")
-                    end
-                end
-            end
-        end
-        print("============================")
-    end
-})
-
 -- ==================== PRO-GRADE LOGIC ENGINE ====================
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -1256,5 +1232,12 @@ initializeESP()
 
 -- Put this at the VERY BOTTOM of your script
 syde:LoadSaveConfig()
+
+-- THIS FIXES THE DROPDOWN SAVING
+task.wait(0.5) -- Give it a moment to load
+if syde.Flags.NameModeDropdown and syde.Flags.NameModeDropdown.Value then
+    ESP_SETTINGS.NAME_MODE = syde.Flags.NameModeDropdown.Value
+    print("✅ Loaded NAME_MODE from config:", ESP_SETTINGS.NAME_MODE)
+end
 
 print("✅ Hallow Interface with ESP loaded successfully!")
