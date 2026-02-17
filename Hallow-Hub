@@ -274,7 +274,7 @@ local ESP_SETTINGS = {
     SHOW_NAMES = true,
     SHOW_HEALTH = true,
     SHOW_DISTANCE = true,
-    MAX_DISTANCE = 2000,
+    MAX_DISTANCE = 20000,
     NAME_MODE = "Both", 
     
     ENEMY_COLOR = Color3.fromRGB(255, 50, 50),
@@ -738,7 +738,7 @@ local MaxDistanceSlider = EspTab:CreateSlider({
 	Title = 'Max Distance',
 	Sliders = {{
 		Title = 'Studs',
-		Range = {100, 2000},
+		Range = {100, 20000},
 		Increment = 50,
 		StarterValue = 500,  -- Use StarterValue instead of CurrentValue
 		CallBack = function(Value)
