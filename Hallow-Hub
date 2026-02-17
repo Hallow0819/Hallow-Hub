@@ -632,6 +632,7 @@ local EnabledToggle = EspTab:Toggle({
 	Title = 'Esp Enabled',
     Flag = 'ESP_Enabled',
     CurrentValue = ESP_SETTINGS.ENABLED,
+    Config = true,
 	CallBack = function(Value)
         ESP_SETTINGS.ENABLED = Value
         print("[ESP] ESP Enabled:", Value)
@@ -650,7 +651,6 @@ local EnabledToggle = EspTab:Toggle({
 local EnemiesToggle = EspTab:Toggle({
 	Title = 'Show Enemies',
 	CurrentValue = ESP_SETTINGS.SHOW_ENEMIES,
-	Config = true,
 	CallBack = function(Value)
         ESP_SETTINGS.SHOW_ENEMIES = Value
         print("[ESP] Show Enemies:", Value)
@@ -661,7 +661,6 @@ local EnemiesToggle = EspTab:Toggle({
 local TeammatesToggle = EspTab:Toggle({
 	Title = 'Show Teammates',
 	CurrentValue = ESP_SETTINGS.SHOW_TEAMMATES,
-	Config = true,
 	CallBack = function(Value)
         ESP_SETTINGS.SHOW_TEAMMATES = Value
         print("[ESP] Show Teammates:", Value)
@@ -672,7 +671,6 @@ local TeammatesToggle = EspTab:Toggle({
 local NamesToggle = EspTab:Toggle({
 	Title = 'Show Names',
 	CurrentValue = ESP_SETTINGS.SHOW_NAMES,
-	Config = true,
 	CallBack = function(Value)
         ESP_SETTINGS.SHOW_NAMES = Value
         print("[ESP] Show Names:", Value)
@@ -689,7 +687,6 @@ local NamesToggle = EspTab:Toggle({
 local HealthToggle = EspTab:Toggle({
 	Title = 'Show Health',
 	CurrentValue = ESP_SETTINGS.SHOW_HEALTH,
-	Config = true,
 	CallBack = function(Value)
         ESP_SETTINGS.SHOW_HEALTH = Value
         print("[ESP] Show Health:", Value)
@@ -706,7 +703,6 @@ local HealthToggle = EspTab:Toggle({
 local DistanceToggle = EspTab:Toggle({
 	Title = 'Show Distance',
 	CurrentValue = ESP_SETTINGS.SHOW_DISTANCE,
-	Config = true,
 	CallBack = function(Value)
         ESP_SETTINGS.SHOW_DISTANCE = Value
         print("[ESP] Show Distance:", Value)
@@ -1042,6 +1038,7 @@ UtilityTab:CreateSlider({
 UtilityTab:Toggle({
 	Title = "Fly",
 	CurrentValue = false,
+    Config = true,
 	Flag = "Fly_Flag",
 	CallBack = function(Value)
 		if Value then
