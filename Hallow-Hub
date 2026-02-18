@@ -1289,6 +1289,11 @@ local AimbotTab = Window:InitTab({
     Title = "Aimbot"
 })
 
+-- Helper function to clamp values (prevents extreme values)
+local function clamp(value, min, max)
+    return math.max(min, math.min(max, value))
+end
+
 -- Aimbot Settings Section
 AimbotTab:Section('Aimbot Settings')
 
@@ -1464,7 +1469,7 @@ AimbotTab:Toggle({
     end
 })
 
--- STICKY AIM TOGGLE (NEW!)
+-- STICKY AIM TOGGLE
 local stickyAim = true
 AimbotTab:Toggle({
     Title = "Sticky Aim (Lock onto target)",
@@ -1479,6 +1484,23 @@ AimbotTab:Toggle({
     end
 })
 
+-- Sticky Aim Strength (EXTRA STRONG - FIGHTS BACK AGAINST FLICKS!)
+local stickyStrength = 0.99  -- Default to 99% (ALMOST IMPOSSIBLE TO BREAK)
+AimbotTab:CreateSlider({
+    Title = "Sticky Aim Strength",
+    Sliders = {{
+        Title = "Resistance %",
+        Range = {80, 100},  -- Minimum 80%, max 100% for ULTRA sticky
+        Increment = 1,
+        StarterValue = 99,
+        CallBack = function(Value)
+            stickyStrength = Value / 100  -- Convert to decimal (0.99)
+            print("Sticky Strength set to:", Value, "%")
+        end,
+        Flag = "StickyStrength"
+    }}
+})
+
 -- ==================== AIMBOT CORE LOGIC ====================
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -1491,7 +1513,7 @@ local keyPressed = false
 local aimbotActive = false
 local currentTarget = nil  -- For sticky aim
 
--- CREATE FOV CIRCLE PROPERLY
+-- CREATE FOV CIRCLE PROPERLY (centered on mouse)
 local fovCircle = Drawing.new("Circle")
 fovCircle.Visible = false
 fovCircle.Thickness = 2
@@ -1500,13 +1522,27 @@ fovCircle.Radius = fovSize
 fovCircle.Color = fovColor
 fovCircle.Filled = false
 fovCircle.Transparency = 1
-fovCircle.Position = Camera.ViewportSize / 2
-print("✅ FOV Circle created")
+fovCircle.Position = Vector2.new(500, 300) -- Default position
+print("✅ FOV Circle created (will follow mouse)")
 
--- Update FOV Circle position and properties
+-- Update FOV Circle position and properties (NOW FOLLOWS MOUSE!)
 RunService.RenderStepped:Connect(function()
     if fovCircle then
-        fovCircle.Position = Camera.ViewportSize / 2
+        -- Get mouse position for FOV circle to follow
+        local mousePos
+        local success, result = pcall(function()
+            return UserInputService:GetMouseLocation()
+        end)
+        
+        if success and result then
+            mousePos = result
+        else
+            -- Fallback to screen center if mouse position fails
+            mousePos = Camera.ViewportSize / 2
+        end
+        
+        -- Update circle properties
+        fovCircle.Position = mousePos  -- Circle follows mouse!
         fovCircle.Radius = fovSize
         fovCircle.Color = fovColor
         fovCircle.Visible = fovEnabled
@@ -1618,19 +1654,30 @@ end
 
 -- Function to get closest target (with STICKY AIM support)
 local function getClosestTarget()
+    -- Get mouse position first (used throughout)
+    local mousePos
+    local success, result = pcall(function()
+        return UserInputService:GetMouseLocation()
+    end)
+    
+    if success and result then
+        mousePos = result
+    else
+        mousePos = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    end
+    
     -- If sticky aim is enabled and we have a current target, check if it's still valid
     if stickyAim and currentTarget then
         if isValidTarget(currentTarget) then
             local targetPartObj = getTargetPart(currentTarget.Character)
             if targetPartObj then
-                -- Check if still in FOV
+                -- Check if still in FOV (using mouse position)
                 local screenPoint, onScreen = Camera:WorldToViewportPoint(targetPartObj.Position)
                 if onScreen then
-                    local mousePos = UserInputService:GetMouseLocation()
                     local distance = (Vector2.new(screenPoint.X, screenPoint.Y) - mousePos).Magnitude
                     
-                    -- If still in FOV and visible, keep current target
-                    if distance <= fovSize then
+                    -- If still in FOV and visible, keep current target (use larger FOV for sticky)
+                    if distance <= fovSize * 1.5 then  -- 50% larger FOV for sticky retention
                         if wallCheck then
                             if isVisible(targetPartObj) then
                                 return currentTarget
@@ -1651,18 +1698,6 @@ local function getClosestTarget()
     local shortestDistance = fovSize
     local playersInFOV = 0
     
-    -- Get mouse position safely
-    local mousePos
-    local success, result = pcall(function()
-        return UserInputService:GetMouseLocation()
-    end)
-    
-    if success and result then
-        mousePos = result
-    else
-        mousePos = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-    end
-    
     -- Loop through all players
     for _, player in ipairs(Players:GetPlayers()) do
         -- Check if player is valid
@@ -1676,7 +1711,7 @@ local function getClosestTarget()
                     local screenPoint, onScreen = Camera:WorldToViewportPoint(targetPartObj.Position)
                     
                     if onScreen then
-                        -- Calculate distance from mouse to target on screen
+                        -- Calculate distance from MOUSE to target on screen
                         local distance = (Vector2.new(screenPoint.X, screenPoint.Y) - mousePos).Magnitude
                         
                         -- Check if within FOV
@@ -1712,7 +1747,7 @@ local function getClosestTarget()
     return closestPlayer
 end
 
--- Main Aimbot Loop
+-- Main Aimbot Loop (with ULTRA STRONG sticky aim that WON'T LET GO!)
 RunService.RenderStepped:Connect(function()
     -- Only aim if shouldAim() returns true
     if not shouldAim() then 
@@ -1733,7 +1768,17 @@ RunService.RenderStepped:Connect(function()
     if wallCheck then
         local visible = isVisible(targetPartObj)
         if not visible then 
-            return 
+            -- If sticky aim is on, try to reacquire for a few frames before giving up
+            if stickyAim and currentTarget then
+                for i = 1, 5 do
+                    task.wait()
+                    visible = isVisible(targetPartObj)
+                    if visible then break end
+                end
+            end
+            if not visible then
+                return 
+            end
         end
     end
     
@@ -1742,32 +1787,63 @@ RunService.RenderStepped:Connect(function()
     local cameraPos = Camera.CFrame.Position
     
     if aimMethod == "Camera" then
-        -- Smooth camera aim
+        -- Smooth camera aim with ULTRA STRONG sticky
         local currentCFrame = Camera.CFrame
         local targetCFrame = CFrame.lookAt(cameraPos, targetPos)
-        local smoothness = aimSpeed / 100
         
-        Camera.CFrame = currentCFrame:Lerp(targetCFrame, smoothness)
+        -- If sticky aim is on, make it IMPOSSIBLE to move away
+        if stickyAim and currentTarget then
+            -- CONTINUOUSLY force back to target (every frame, multiple times)
+            for i = 1, 5 do  -- 5 pulls per frame for MAXIMUM stickiness
+                Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, stickyStrength)
+                task.wait()
+            end
+            -- Extra snap every few frames
+            if tick() % 0.1 < 0.01 then
+                Camera.CFrame = targetCFrame  -- Full snap occasionally
+            end
+        else
+            -- Normal smooth aim
+            local smoothness = aimSpeed / 100
+            Camera.CFrame = currentCFrame:Lerp(targetCFrame, smoothness)
+        end
         
     elseif aimMethod == "Mouse" then
-        -- Move mouse to target
+        -- Move mouse to target (FIXED - NO MORE SPINNING!)
         local screenPoint = Camera:WorldToViewportPoint(targetPos)
         if screenPoint then
-            mousemoverel(
-                (screenPoint.X - Camera.ViewportSize.X/2) * (aimSpeed/100),
-                (screenPoint.Y - Camera.ViewportSize.Y/2) * (aimSpeed/100)
-            )
+            -- Calculate how far the target is from screen center
+            local targetX = screenPoint.X - Camera.ViewportSize.X/2
+            local targetY = screenPoint.Y - Camera.ViewportSize.Y/2
+            
+            -- Limit the movement amount to prevent spinning
+            local maxMove = 20  -- Maximum pixels per frame
+            local moveX = clamp(targetX * (aimSpeed/200), -maxMove, maxMove)
+            local moveY = clamp(targetY * (aimSpeed/200), -maxMove, maxMove)
+            
+            -- If sticky aim is on, apply extra pulls
+            if stickyAim and currentTarget then
+                -- Gentle pulls toward target (not full force)
+                for i = 1, 3 do
+                    mousemoverel(moveX * 0.5, moveY * 0.5)  -- Half strength to prevent overspin
+                    task.wait()
+                end
+            else
+                mousemoverel(moveX, moveY)
+            end
         end
         
     elseif aimMethod == "CFrame" then
-        -- Instant CFrame aim
+        -- Instant CFrame aim (this already sticks 100%)
         Camera.CFrame = CFrame.lookAt(cameraPos, targetPos)
     end
 end)
 
-AimbotTab:Label("✅ Aimbot ready with STICKY AIM!", "Left")
-AimbotTab:Label("📌 Sticky Aim locks onto target until you release the key", "Left")
-AimbotTab:Label("📊 Select your key from the dropdown above", "Left")
+AimbotTab:Label("✅ ULTRA STICKY AIM - WON'T LET GO!", "Left")
+AimbotTab:Label("📌 FOV Circle follows your mouse cursor", "Left")
+AimbotTab:Label("📊 Strength now 80-100% for MAXIMUM stickiness", "Left")
+AimbotTab:Label("🔥 MOUSE AIM FIXED - No more spinning!", "Left")
+AimbotTab:Label("📌 Select your key from the dropdown above", "Left")
 
 -- Initialize ESP after UI is created
 task.wait(3) -- Give UI time to load
