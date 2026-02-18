@@ -234,7 +234,7 @@ LP.CharacterAdded:Connect(function()
 end)
 
 -- Optional: Add a small indicator that mobile controls are active
-local function showMobileIndicator()
+    local function showMobileIndicator()
     if not UIS.TouchEnabled then return end
     
     local screenGui = LP:FindFirstChild("PlayerGui") or Instance.new("ScreenGui")
@@ -274,7 +274,7 @@ local ESP_SETTINGS = {
     SHOW_NAMES = true,
     SHOW_HEALTH = true,
     SHOW_DISTANCE = true,
-    MAX_DISTANCE = 20000,
+    MAX_DISTANCE = 2000,
     NAME_MODE = "Both", 
     
     ENEMY_COLOR = Color3.fromRGB(255, 50, 50),
@@ -303,6 +303,12 @@ end
 -- Improved createESP function
 local function createESP(player)
     if player == LocalPlayer then return end
+    
+    -- ADD THIS DUPLICATE CHECK RIGHT HERE
+    if espData[player] then
+        print("[ESP] ESP already exists for:", player.Name)
+        return
+    end
     
     print("[ESP] Creating ESP for:", player.Name)
     
@@ -549,43 +555,75 @@ local function createESP(player)
     end)
 end
 
--- Function to initialize ESP
+-- Function to initialize ESP (ENHANCED - NO MORE REFRESH BUTTON NEEDED!)
 local function initializeESP()
-    print("[ESP] Initializing ESP system...")
+    print("[ESP] Initializing ESP system with multi-scan...")
     
-    -- Create ESP for all existing players
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            task.spawn(function()
-                createESP(player)
-            end)
+    -- Wait longer for players to load
+    task.wait(3)
+    
+    -- Track which players we've already processed
+    local scannedPlayers = {}
+    
+    -- Function to scan players with retry
+    local function scanPlayers()
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and not scannedPlayers[player] then
+                scannedPlayers[player] = true
+                print("[ESP] Creating ESP for:", player.Name)
+                task.spawn(function()
+                    createESP(player)
+                end)
+            end
         end
     end
     
-    -- Handle new players
+    -- Initial scan
+    scanPlayers()
+    
+    -- Second scan after 2 seconds (catches any that loaded late)
+    task.wait(2)
+    scanPlayers()
+    
+    -- Third scan after another 2 seconds (just to be safe)
+    task.wait(2)
+    scanPlayers()
+    
+    -- Handle new players that join after initialization
     Players.PlayerAdded:Connect(function(player)
         if player ~= LocalPlayer then
+            print("🆕 New player joined, creating ESP for:", player.Name)
             task.spawn(function()
                 createESP(player)
+            end)
+            
+            -- Also handle when their character loads (in case it's delayed)
+            player.CharacterAdded:Connect(function()
+                task.wait(1)
+                if not espData[player] then
+                    print("🔄 Player character loaded, creating ESP for:", player.Name)
+                    createESP(player)
+                end
             end)
         end
     end)
     
-    -- Cleanup
+    -- Cleanup when players leave
     Players.PlayerRemoving:Connect(function(player)
         if espData[player] then
             local data = espData[player]
             if data.highlight then
-                data.highlight:Destroy()
+                pcall(function() data.highlight:Destroy() end)
             end
             if data.billboard then
-                data.billboard:Destroy()
+                pcall(function() data.billboard:Destroy() end)
             end
             espData[player] = nil
+            print("[ESP] Removed ESP for:", player.Name)
         end
     end)
     
-    print("[ESP] ESP system initialized")
+    print("[ESP] ESP system fully initialized with multi-scan!")
 end
 
 -- Run test
@@ -1084,6 +1122,35 @@ UtilityTab:Toggle({
     end
 })
 
+-- Anti Afk Toggle (Prevents you from being kicked for being idle)
+local afkConnection = nil  -- Store the connection so we can disconnect it
+
+UtilityTab:Toggle({
+    Title = "Anti-AFK",
+    CurrentValue = false,
+    Flag = "AFK_Flag",
+    CallBack = function(Value)
+        if Value then
+            -- Only create connection if it doesn't exist
+            if not afkConnection then
+                local VirtualUser = game:GetService("VirtualUser")
+                afkConnection = game:GetService("Players").LocalPlayer.Idled:Connect(function()
+                    VirtualUser:ClickButton2(Vector2.new())
+                    print("🔄 Anti-AFK triggered - Simulated activity")
+                end)
+                print("✅ Anti-AFK enabled")
+            end
+        else
+            -- Disconnect when toggled off
+            if afkConnection then
+                afkConnection:Disconnect()
+                afkConnection = nil
+                print("❌ Anti-AFK disabled")
+            end
+        end
+    end
+})
+
 -- Reset All Movement Button (UPDATED)
 UtilityTab:Button({
     Title = "Reset All Movement",
@@ -1217,17 +1284,493 @@ UtilityTab:Button({
     end
 })
 
--- ==================== AIMBOT TAB ====================
+-- ==================== AIMBOT SYSTEM ====================
 local AimbotTab = Window:InitTab({
     Title = "Aimbot"
 })
 
-AimbotTab:Section('Aimbot Settings') -- Set Section Title and Icon (Optional)
+-- Aimbot Settings Section
+AimbotTab:Section('Aimbot Settings')
 
-AimbotTab:Label("Aimbot is currently in development. Stay tuned for updates!", "Left")
+-- Aimbot Master Toggle
+local aimbotMasterEnabled = false
+AimbotTab:Toggle({
+    Title = "Aimbot Enabled",
+    CurrentValue = false,
+    Flag = "Aimbot_Enabled",
+    CallBack = function(Value)
+        aimbotMasterEnabled = Value
+        print("🔫 Aimbot System:", Value and "ON" or "OFF")
+    end
+})
+
+-- Aimbot Key Selection (Drop-down instead of Keybind - MORE RELIABLE)
+local aimbotKey = Enum.KeyCode.LeftShift
+local currentTarget = nil  -- For sticky aim
+local keyNames = {
+    "LeftShift", "RightShift", "LeftControl", "RightControl", "LeftAlt", "RightAlt",
+    "E", "Q", "F", "G", "R", "T", "Y", "U", "I", "O", "P",
+    "A", "S", "D", "F", "G", "H", "J", "K", "L",
+    "Z", "X", "C", "V", "B", "N", "M",
+    "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Zero",
+    "MouseButton1", "MouseButton2", "MouseButton3"
+}
+
+AimbotTab:Dropdown({
+    Title = "Aimbot Key",
+    Options = keyNames,
+    CurrentOption = {"LeftShift"},
+    Multi = false,
+    Flag = "AimbotKeySelect",
+    CallBack = function(option)
+        local keyName = type(option) == "table" and option[1] or option
+        -- Convert string to Enum.KeyCode
+        local success, enumKey = pcall(function()
+            return Enum.KeyCode[keyName]
+        end)
+        if success and enumKey then
+            aimbotKey = enumKey
+            print("🔑 Aimbot key set to:", keyName)
+        else
+            print("⚠️ Invalid key, using LeftShift")
+            aimbotKey = Enum.KeyCode.LeftShift
+        end
+    end
+})
+
+-- Keybind Mode Dropdown
+local aimbotMode = "Hold Key"
+AimbotTab:Dropdown({
+    Title = "Activation Mode",
+    Options = {"Hold Key", "Toggle Key", "Always On"},
+    CurrentOption = {"Hold Key"},
+    Multi = false,
+    Flag = "AimbotMode",
+    CallBack = function(option)
+        aimbotMode = type(option) == "table" and option[1] or option
+        print("Aimbot mode set to:", aimbotMode)
+    end
+})
+
+-- Aim Method Dropdown
+local aimMethod = "Camera"
+AimbotTab:Dropdown({
+    Title = "Aim Method",
+    Options = {"Camera", "Mouse", "CFrame"},
+    CurrentOption = {"Camera"},
+    Multi = false,
+    Flag = "AimMethod",
+    CallBack = function(option)
+        aimMethod = type(option) == "table" and option[1] or option
+    end
+})
+
+-- Target Part Dropdown
+local targetPart = "Head"
+AimbotTab:Dropdown({
+    Title = "Target Part",
+    Options = {"Head", "HumanoidRootPart", "Torso", "UpperTorso", "LowerTorso", "Random"},
+    CurrentOption = {"Head"},
+    Multi = false,
+    Flag = "TargetPart",
+    CallBack = function(option)
+        targetPart = type(option) == "table" and option[1] or option
+    end
+})
+
+-- Aim Speed Slider
+local aimSpeed = 20
+AimbotTab:CreateSlider({
+    Title = "Aim Speed",
+    Sliders = {{
+        Title = "Smoothness",
+        Range = {1, 100},
+        Increment = 1,
+        StarterValue = 20,
+        CallBack = function(Value)
+            aimSpeed = Value
+        end,
+        Flag = "AimSpeed"
+    }}
+})
+
+-- FOV Size Slider
+local fovSize = 150
+AimbotTab:CreateSlider({
+    Title = "FOV Size",
+    Sliders = {{
+        Title = "Radius",
+        Range = {50, 500},
+        Increment = 5,
+        StarterValue = 150,
+        CallBack = function(Value)
+            fovSize = Value
+            if fovCircle then
+                fovCircle.Radius = Value
+            end
+        end,
+        Flag = "FOVSize"
+    }}
+})
+
+-- FOV Toggle
+local fovEnabled = false
+AimbotTab:Toggle({
+    Title = "Show FOV Circle",
+    CurrentValue = false,
+    Flag = "FOV_Toggle",
+    CallBack = function(Value)
+        fovEnabled = Value
+        if fovCircle then
+            fovCircle.Visible = Value
+            print("FOV Circle:", Value and "Visible" or "Hidden")
+        end
+    end
+})
+
+-- FOV Color Picker
+local fovColor = Color3.fromRGB(255, 255, 255)
+AimbotTab:ColorPicker({
+    Title = "FOV Color",
+    Color = Color3.fromRGB(255, 255, 255),
+    Flag = "FOV_Color",
+    CallBack = function(Value)
+        fovColor = Value
+        if fovCircle then
+            fovCircle.Color = Value
+        end
+    end
+})
+
+-- Team Check Toggle
+local ignoreTeammates = true
+AimbotTab:Toggle({
+    Title = "Ignore Teammates",
+    CurrentValue = true,
+    Flag = "IgnoreTeammates",
+    CallBack = function(Value)
+        ignoreTeammates = Value
+    end
+})
+
+-- Wall Check Toggle
+local wallCheck = false
+AimbotTab:Toggle({
+    Title = "Wall Check",
+    CurrentValue = false,
+    Flag = "WallCheck",
+    CallBack = function(Value)
+        wallCheck = Value
+    end
+})
+
+-- STICKY AIM TOGGLE (NEW!)
+local stickyAim = true
+AimbotTab:Toggle({
+    Title = "Sticky Aim (Lock onto target)",
+    CurrentValue = true,
+    Flag = "StickyAim",
+    CallBack = function(Value)
+        stickyAim = Value
+        if not Value then
+            currentTarget = nil  -- Clear target when sticky is off
+        end
+        print("Sticky Aim:", Value and "ON" or "OFF")
+    end
+})
+
+-- ==================== AIMBOT CORE LOGIC ====================
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local LP = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- Keybind state tracking
+local keyPressed = false
+local aimbotActive = false
+local currentTarget = nil  -- For sticky aim
+
+-- CREATE FOV CIRCLE PROPERLY
+local fovCircle = Drawing.new("Circle")
+fovCircle.Visible = false
+fovCircle.Thickness = 2
+fovCircle.NumSides = 60
+fovCircle.Radius = fovSize
+fovCircle.Color = fovColor
+fovCircle.Filled = false
+fovCircle.Transparency = 1
+fovCircle.Position = Camera.ViewportSize / 2
+print("✅ FOV Circle created")
+
+-- Update FOV Circle position and properties
+RunService.RenderStepped:Connect(function()
+    if fovCircle then
+        fovCircle.Position = Camera.ViewportSize / 2
+        fovCircle.Radius = fovSize
+        fovCircle.Color = fovColor
+        fovCircle.Visible = fovEnabled
+    end
+end)
+
+-- Keybind handler (using dropdown key)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    -- Check if the input matches our selected key
+    if input.KeyCode == aimbotKey then
+        keyPressed = true
+        
+        if aimbotMode == "Hold Key" then
+            aimbotActive = true
+            print("🎯 Aimbot ACTIVE (holding key)")
+        elseif aimbotMode == "Toggle Key" then
+            aimbotActive = not aimbotActive
+            if not aimbotActive then
+                currentTarget = nil  -- Clear target when toggled off
+            end
+            print("🎯 Aimbot:", aimbotActive and "TOGGLED ON" or "TOGGLED OFF")
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if input.KeyCode == aimbotKey and aimbotMode == "Hold Key" then
+        keyPressed = false
+        aimbotActive = false
+        currentTarget = nil  -- Clear target when key released
+        print("🎯 Aimbot DEACTIVATED (key released)")
+    end
+end)
+
+-- Function to check if aimbot should currently aim
+local function shouldAim()
+    -- Master toggle must be on
+    if not aimbotMasterEnabled then 
+        return false 
+    end
+    
+    -- Check based on mode
+    if aimbotMode == "Always On" then
+        return true
+    else
+        return aimbotActive
+    end
+end
+
+-- Function to check if player is valid target
+local function isValidTarget(player)
+    if not player or player == LP then 
+        return false 
+    end
+    if not player.Character then 
+        return false 
+    end
+    
+    local character = player.Character
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if not humanoid or humanoid.Health <= 0 then 
+        return false 
+    end
+    
+    -- Team check
+    if ignoreTeammates and player.Team and LP.Team then
+        if player.Team == LP.Team then 
+            return false 
+        end
+    end
+    
+    return true
+end
+
+-- Function to get target part
+local function getTargetPart(character)
+    local part = targetPart or "Head"
+    
+    if part == "Random" then
+        local parts = {"Head", "HumanoidRootPart", "Torso", "UpperTorso", "LowerTorso"}
+        part = parts[math.random(1, #parts)]
+    end
+    
+    local target = character:FindFirstChild(part)
+    if not target then
+        target = character:FindFirstChild("Head") 
+        if not target then
+            target = character:FindFirstChild("HumanoidRootPart")
+        end
+    end
+    
+    return target
+end
+
+-- Function to check visibility
+local function isVisible(targetPart)
+    if not wallCheck then return true end
+    
+    local origin = Camera.CFrame.Position
+    local target = targetPart.Position
+    local direction = (target - origin).Unit
+    local ray = Ray.new(origin, direction * 1000)
+    local hit, position = workspace:FindPartOnRay(ray, LP.Character)
+    
+    return hit and hit:IsDescendantOf(targetPart.Parent)
+end
+
+-- Function to get closest target (with STICKY AIM support)
+local function getClosestTarget()
+    -- If sticky aim is enabled and we have a current target, check if it's still valid
+    if stickyAim and currentTarget then
+        if isValidTarget(currentTarget) then
+            local targetPartObj = getTargetPart(currentTarget.Character)
+            if targetPartObj then
+                -- Check if still in FOV
+                local screenPoint, onScreen = Camera:WorldToViewportPoint(targetPartObj.Position)
+                if onScreen then
+                    local mousePos = UserInputService:GetMouseLocation()
+                    local distance = (Vector2.new(screenPoint.X, screenPoint.Y) - mousePos).Magnitude
+                    
+                    -- If still in FOV and visible, keep current target
+                    if distance <= fovSize then
+                        if wallCheck then
+                            if isVisible(targetPartObj) then
+                                return currentTarget
+                            end
+                        else
+                            return currentTarget
+                        end
+                    end
+                end
+            end
+        end
+        -- If current target is no longer valid, clear it
+        currentTarget = nil
+    end
+    
+    -- Find new target
+    local closestPlayer = nil
+    local shortestDistance = fovSize
+    local playersInFOV = 0
+    
+    -- Get mouse position safely
+    local mousePos
+    local success, result = pcall(function()
+        return UserInputService:GetMouseLocation()
+    end)
+    
+    if success and result then
+        mousePos = result
+    else
+        mousePos = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    end
+    
+    -- Loop through all players
+    for _, player in ipairs(Players:GetPlayers()) do
+        -- Check if player is valid
+        if isValidTarget(player) then
+            local character = player.Character
+            if character then
+                local targetPartObj = getTargetPart(character)
+                
+                if targetPartObj then
+                    -- Convert world position to screen position
+                    local screenPoint, onScreen = Camera:WorldToViewportPoint(targetPartObj.Position)
+                    
+                    if onScreen then
+                        -- Calculate distance from mouse to target on screen
+                        local distance = (Vector2.new(screenPoint.X, screenPoint.Y) - mousePos).Magnitude
+                        
+                        -- Check if within FOV
+                        if distance <= fovSize then
+                            playersInFOV = playersInFOV + 1
+                            
+                            -- Check visibility if enabled
+                            local visible = true
+                            if wallCheck then
+                                visible = isVisible(targetPartObj)
+                            end
+                            
+                            -- If visible and closer than current target, select it
+                            if visible and distance < shortestDistance then
+                                shortestDistance = distance
+                                closestPlayer = player
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    -- Set new target if found
+    if closestPlayer then
+        currentTarget = closestPlayer
+        if playersInFOV > 0 then
+            print("🎯 Target acquired:", closestPlayer.Name, "Distance:", math.floor(shortestDistance))
+        end
+    end
+    
+    return closestPlayer
+end
+
+-- Main Aimbot Loop
+RunService.RenderStepped:Connect(function()
+    -- Only aim if shouldAim() returns true
+    if not shouldAim() then 
+        return 
+    end
+    
+    local target = getClosestTarget()
+    if not target then 
+        return 
+    end
+    
+    local targetPartObj = getTargetPart(target.Character)
+    if not targetPartObj then 
+        return 
+    end
+    
+    -- Check wall again for safety
+    if wallCheck then
+        local visible = isVisible(targetPartObj)
+        if not visible then 
+            return 
+        end
+    end
+    
+    -- Aim at target
+    local targetPos = targetPartObj.Position
+    local cameraPos = Camera.CFrame.Position
+    
+    if aimMethod == "Camera" then
+        -- Smooth camera aim
+        local currentCFrame = Camera.CFrame
+        local targetCFrame = CFrame.lookAt(cameraPos, targetPos)
+        local smoothness = aimSpeed / 100
+        
+        Camera.CFrame = currentCFrame:Lerp(targetCFrame, smoothness)
+        
+    elseif aimMethod == "Mouse" then
+        -- Move mouse to target
+        local screenPoint = Camera:WorldToViewportPoint(targetPos)
+        if screenPoint then
+            mousemoverel(
+                (screenPoint.X - Camera.ViewportSize.X/2) * (aimSpeed/100),
+                (screenPoint.Y - Camera.ViewportSize.Y/2) * (aimSpeed/100)
+            )
+        end
+        
+    elseif aimMethod == "CFrame" then
+        -- Instant CFrame aim
+        Camera.CFrame = CFrame.lookAt(cameraPos, targetPos)
+    end
+end)
+
+AimbotTab:Label("✅ Aimbot ready with STICKY AIM!", "Left")
+AimbotTab:Label("📌 Sticky Aim locks onto target until you release the key", "Left")
+AimbotTab:Label("📊 Select your key from the dropdown above", "Left")
 
 -- Initialize ESP after UI is created
-task.wait(2) -- Give UI time to load
+task.wait(3) -- Give UI time to load
 initializeESP()
 
 -- Put this at the VERY BOTTOM of your script
