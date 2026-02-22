@@ -1492,7 +1492,7 @@ AimbotTab:CreateSlider({
         Title = "Resistance %",
         Range = {80, 100},  -- Minimum 80%, max 100% for ULTRA sticky
         Increment = 1,
-        StarterValue = 99,
+        StarterValue = 100,
         CallBack = function(Value)
             stickyStrength = Value / 100  -- Convert to decimal (0.99)
             print("Sticky Strength set to:", Value, "%")
@@ -1839,10 +1839,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-AimbotTab:Label("✅ ULTRA STICKY AIM - WON'T LET GO!", "Left")
-AimbotTab:Label("📌 FOV Circle follows your mouse cursor", "Left")
-AimbotTab:Label("📊 Strength now 80-100% for MAXIMUM stickiness", "Left")
-AimbotTab:Label("🔥 MOUSE AIM FIXED - No more spinning!", "Left")
 AimbotTab:Label("📌 Select your key from the dropdown above", "Left")
 
 -- Initialize ESP after UI is created
