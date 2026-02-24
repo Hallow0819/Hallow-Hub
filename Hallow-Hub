@@ -1599,7 +1599,7 @@ local function isValidTarget(player)
     if not player or player == LP then 
         return false 
     end
-    if not player.Character then 
+    if not player or not player.Character then
         return false 
     end
     
@@ -1628,7 +1628,7 @@ local function getTargetPart(character)
         part = parts[math.random(1, #parts)]
     end
     
-    local target = character:FindFirstChild(part)
+    local target = character and character:FindFirstChild(part)
     if not target then
         target = character:FindFirstChild("Head") 
         if not target then
@@ -1669,7 +1669,7 @@ local function getClosestTarget()
     -- If sticky aim is enabled and we have a current target, check if it's still valid
     if stickyAim and currentTarget then
         if isValidTarget(currentTarget) then
-            local targetPartObj = getTargetPart(currentTarget.Character)
+            local targetPartObj = currentTarget and currentTarget.Character and getTargetPart(currentTarget.Character)
             if targetPartObj then
                 -- Check if still in FOV (using mouse position)
                 local screenPoint, onScreen = Camera:WorldToViewportPoint(targetPartObj.Position)
@@ -1704,7 +1704,7 @@ local function getClosestTarget()
         if isValidTarget(player) then
             local character = player.Character
             if character then
-                local targetPartObj = getTargetPart(character)
+                local targetPartObj = character and getTargetPart(character)
                 
                 if targetPartObj then
                     -- Convert world position to screen position
@@ -1759,7 +1759,7 @@ RunService.RenderStepped:Connect(function()
         return 
     end
     
-    local targetPartObj = getTargetPart(target.Character)
+    local targetPartObj = target and target.Character and getTargetPart(target.Character)
     if not targetPartObj then 
         return 
     end
@@ -1841,18 +1841,513 @@ end)
 
 AimbotTab:Label("📌 Select your key from the dropdown above", "Left")
 
+-- ==================== WORLD VISUALS TAB ====================
+local WorldTab = Window:InitTab({
+    Title = "World"
+})
+
+-- ==================== LIGHTING CONTROL ====================
+WorldTab:Section('Lighting Control')
+
+-- Fullbright Toggle
+local fullbrightEnabled = false
+local fullbrightConnection = nil
+
+WorldTab:Toggle({
+    Title = "Fullbright",
+    CurrentValue = false,
+    Flag = "Fullbright_Flag",
+    CallBack = function(Value)
+        fullbrightEnabled = Value
+        if Value then
+            if not fullbrightConnection then
+                -- Set ambient to max brightness
+                game:GetService("Lighting").Ambient = Color3.new(1, 1, 1)
+                game:GetService("Lighting").Brightness = 2
+                game:GetService("Lighting").OutdoorAmbient = Color3.new(1, 1, 1)
+                game:GetService("Lighting").ColorShift_Top = Color3.new(1, 1, 1)
+                game:GetService("Lighting").ColorShift_Bottom = Color3.new(1, 1, 1)
+                
+                fullbrightConnection = game:GetService("RunService").RenderStepped:Connect(function()
+                    game:GetService("Lighting").Ambient = Color3.new(1, 1, 1)
+                    game:GetService("Lighting").Brightness = 2
+                end)
+            end
+            print("💡 Fullbright ENABLED")
+        else
+            if fullbrightConnection then
+                fullbrightConnection:Disconnect()
+                fullbrightConnection = nil
+            end
+            game:GetService("Lighting").Ambient = Color3.new(0, 0, 0)
+            game:GetService("Lighting").Brightness = 1
+            game:GetService("Lighting").OutdoorAmbient = Color3.new(0.5, 0.5, 0.5)
+            game:GetService("Lighting").ColorShift_Top = Color3.new(0, 0, 0)
+            game:GetService("Lighting").ColorShift_Bottom = Color3.new(0, 0, 0)
+            print("💡 Fullbright DISABLED")
+        end
+    end
+})
+
+-- Time of Day Slider
+local timeConnection = nil
+WorldTab:CreateSlider({
+    Title = "Time of Day",
+    Sliders = {{
+        Title = "Hours",
+        Range = {0, 24},
+        Increment = 0.5,
+        StarterValue = 12,
+        CallBack = function(Value)
+            local hours = math.floor(Value)
+            local minutes = (Value - hours) * 60
+            local timeString = string.format("%02d:%02d:00", hours, minutes)
+            
+            game:GetService("Lighting").TimeOfDay = timeString
+            game:GetService("Lighting").ClockTime = hours + (minutes/60)
+            
+            if timeConnection then
+                timeConnection:Disconnect()
+            end
+            timeConnection = game:GetService("RunService").RenderStepped:Connect(function()
+                game:GetService("Lighting").TimeOfDay = timeString
+                game:GetService("Lighting").ClockTime = hours + (minutes/60)
+            end)
+            
+            print("⏰ Time set to:", string.format("%02d:%02d", hours, minutes))
+        end,
+        Flag = "TimeOfDay_Flag"
+    }}
+})
+
+-- Brightness Slider
+WorldTab:CreateSlider({
+    Title = "Brightness",
+    Sliders = {{
+        Title = "Level",
+        Range = {0, 5},
+        Increment = 0.1,
+        StarterValue = 1,
+        CallBack = function(Value)
+            game:GetService("Lighting").Brightness = Value
+        end,
+        Flag = "Brightness_Flag"
+    }}
+})
+
+-- Ambient Slider
+WorldTab:CreateSlider({
+    Title = "Ambient Light",
+    Sliders = {{
+        Title = "Intensity",
+        Range = {0, 2},
+        Increment = 0.1,
+        StarterValue = 0,
+        CallBack = function(Value)
+            game:GetService("Lighting").Ambient = Color3.new(Value, Value, Value)
+        end,
+        Flag = "Ambient_Flag"
+    }}
+})
+
+-- ==================== FOG CONTROL ====================
+WorldTab:Section('Fog Control')
+
+-- Fog Toggle
+WorldTab:Toggle({
+    Title = "Enable Fog",
+    CurrentValue = false,
+    Flag = "Fog_Enable_Flag",
+    CallBack = function(Value)
+        if Value then
+            -- Set fog to be visible
+            game:GetService("Lighting").FogStart = 10
+            game:GetService("Lighting").FogEnd = 100
+            print("🌫️ Fog enabled")
+        else
+            -- Disable fog by pushing it far away
+            game:GetService("Lighting").FogStart = 1e9
+            game:GetService("Lighting").FogEnd = 1e9
+            print("🌫️ Fog disabled")
+        end
+    end
+})
+
+-- Fog Intensity Slider
+WorldTab:CreateSlider({
+    Title = "Fog Intensity",
+    Sliders = {{
+        Title = "Thickness",
+        Range = {1, 500},
+        Increment = 10,
+        StarterValue = 100,
+        CallBack = function(Value)
+            game:GetService("Lighting").FogEnd = Value
+        end,
+        Flag = "FogIntensity_Flag"
+    }}
+})
+
+-- Fog Start Distance
+WorldTab:CreateSlider({
+    Title = "Fog Start",
+    Sliders = {{
+        Title = "Start Distance",
+        Range = {0, 200},
+        Increment = 5,
+        StarterValue = 10,
+        CallBack = function(Value)
+            game:GetService("Lighting").FogStart = Value
+        end,
+        Flag = "FogStart_Flag"
+    }}
+})
+
+-- Fog Color Picker
+WorldTab:ColorPicker({
+    Title = "Fog Color",
+    Color = Color3.fromRGB(200, 200, 200),
+    Flag = "FogColor_Flag",
+    CallBack = function(Value)
+        game:GetService("Lighting").FogColor = Value
+    end
+})
+
+-- ==================== SKYBOX CONTROL (WITH APPLY BUTTON) ====================
+WorldTab:Section('Skybox Control')
+
+-- Skybox Options with working asset IDs
+local skyboxUrls = {
+    ["Default"] = "",
+    ["Night"] = "rbxassetid://159451284",      -- Starry night sky
+    ["Sunset"] = "rbxassetid://1421175116",    -- Orange sunset
+    ["Storm"] = "rbxassetid://160339759",      -- Dark storm clouds
+    ["Space"] = "rbxassetid://1421182900",     -- Galaxy/space
+    ["Clouds"] = "rbxassetid://1421181669",    -- Puffy clouds
+    ["Neon"] = "rbxassetid://1421182172"       -- Neon grid
+}
+
+-- Variable to store selected skybox
+local selectedSkybox = "Default"
+
+-- Skybox Selection Dropdown
+WorldTab:Dropdown({
+    Title = "Select Skybox",
+    Options = {"Default", "Night", "Sunset", "Storm", "Space", "Clouds", "Neon"},
+    CurrentOption = {"Default"},
+    Multi = false,
+    Flag = "SkyboxSelect_Flag",
+    CallBack = function(option)
+        selectedSkybox = type(option) == "table" and option[1] or option
+        print("🌌 Selected skybox:", selectedSkybox)
+    end
+})
+
+-- Apply Skybox Button
+WorldTab:Button({
+    Title = "Apply Skybox",
+    CallBack = function()
+        local success = pcall(function()
+            if selectedSkybox == "Default" then
+                -- Remove custom skybox
+                if game:GetService("Lighting"):FindFirstChildOfClass("Sky") then
+                    game:GetService("Lighting"):FindFirstChildOfClass("Sky"):Destroy()
+                end
+                syde:Notify({
+                    Title = "Skybox",
+                    Content = "Reset to default",
+                    Duration = 2
+                })
+                print("🌌 Skybox reset to default")
+                return
+            end
+            
+            -- Get the skybox URL
+            local url = skyboxUrls[selectedSkybox]
+            if url and url ~= "" then
+                -- Remove existing skybox
+                if game:GetService("Lighting"):FindFirstChildOfClass("Sky") then
+                    game:GetService("Lighting"):FindFirstChildOfClass("Sky"):Destroy()
+                end
+                
+                -- Create new skybox
+                local sky = Instance.new("Sky")
+                sky.SkyboxBk = url
+                sky.SkyboxDn = url
+                sky.SkyboxFt = url
+                sky.SkyboxLf = url
+                sky.SkyboxRt = url
+                sky.SkyboxUp = url
+                
+                -- Optional: Add stars and celestial bodies
+                sky.CelestialBodiesShown = true
+                sky.StarCount = 3000
+                
+                sky.Parent = game:GetService("Lighting")
+                
+                syde:Notify({
+                    Title = "Skybox",
+                    Content = "Applied " .. selectedSkybox .. " skybox!",
+                    Duration = 2
+                })
+                print("🌌 Skybox applied:", selectedSkybox)
+            end
+        end)
+        
+        if not success then
+            syde:Notify({
+                Title = "Skybox Error",
+                Content = "Could not apply skybox",
+                Duration = 3
+            })
+        end
+    end
+})
+
+-- Quick Skybox Buttons (for faster access)
+WorldTab:Label("Quick Skybox Buttons:", "Left")
+
+-- Row 1: Night & Sunset
+WorldTab:Button({
+    Title = "🌙 Night",
+    CallBack = function()
+        selectedSkybox = "Night"
+        pcall(function()
+            if game:GetService("Lighting"):FindFirstChildOfClass("Sky") then
+                game:GetService("Lighting"):FindFirstChildOfClass("Sky"):Destroy()
+            end
+            
+            local sky = Instance.new("Sky")
+            sky.SkyboxBk = skyboxUrls["Night"]
+            sky.SkyboxDn = skyboxUrls["Night"]
+            sky.SkyboxFt = skyboxUrls["Night"]
+            sky.SkyboxLf = skyboxUrls["Night"]
+            sky.SkyboxRt = skyboxUrls["Night"]
+            sky.SkyboxUp = skyboxUrls["Night"]
+            sky.Parent = game:GetService("Lighting")
+            
+            syde:Notify({Title = "Skybox", Content = "Night sky applied!", Duration = 1})
+        end)
+    end
+})
+
+WorldTab:Button({
+    Title = "🌅 Sunset",
+    CallBack = function()
+        selectedSkybox = "Sunset"
+        pcall(function()
+            if game:GetService("Lighting"):FindFirstChildOfClass("Sky") then
+                game:GetService("Lighting"):FindFirstChildOfClass("Sky"):Destroy()
+            end
+            
+            local sky = Instance.new("Sky")
+            sky.SkyboxBk = skyboxUrls["Sunset"]
+            sky.SkyboxDn = skyboxUrls["Sunset"]
+            sky.SkyboxFt = skyboxUrls["Sunset"]
+            sky.SkyboxLf = skyboxUrls["Sunset"]
+            sky.SkyboxRt = skyboxUrls["Sunset"]
+            sky.SkyboxUp = skyboxUrls["Sunset"]
+            sky.Parent = game:GetService("Lighting")
+            
+            syde:Notify({Title = "Skybox", Content = "Sunset sky applied!", Duration = 1})
+        end)
+    end
+})
+
+-- Row 2: Storm & Space
+WorldTab:Button({
+    Title = "⛈️ Storm",
+    CallBack = function()
+        selectedSkybox = "Storm"
+        pcall(function()
+            if game:GetService("Lighting"):FindFirstChildOfClass("Sky") then
+                game:GetService("Lighting"):FindFirstChildOfClass("Sky"):Destroy()
+            end
+            
+            local sky = Instance.new("Sky")
+            sky.SkyboxBk = skyboxUrls["Storm"]
+            sky.SkyboxDn = skyboxUrls["Storm"]
+            sky.SkyboxFt = skyboxUrls["Storm"]
+            sky.SkyboxLf = skyboxUrls["Storm"]
+            sky.SkyboxRt = skyboxUrls["Storm"]
+            sky.SkyboxUp = skyboxUrls["Storm"]
+            sky.Parent = game:GetService("Lighting")
+            
+            syde:Notify({Title = "Skybox", Content = "Storm sky applied!", Duration = 1})
+        end)
+    end
+})
+
+WorldTab:Button({
+    Title = "🚀 Space",
+    CallBack = function()
+        selectedSkybox = "Space"
+        pcall(function()
+            if game:GetService("Lighting"):FindFirstChildOfClass("Sky") then
+                game:GetService("Lighting"):FindFirstChildOfClass("Sky"):Destroy()
+            end
+            
+            local sky = Instance.new("Sky")
+            sky.SkyboxBk = skyboxUrls["Space"]
+            sky.SkyboxDn = skyboxUrls["Space"]
+            sky.SkyboxFt = skyboxUrls["Space"]
+            sky.SkyboxLf = skyboxUrls["Space"]
+            sky.SkyboxRt = skyboxUrls["Space"]
+            sky.SkyboxUp = skyboxUrls["Space"]
+            sky.Parent = game:GetService("Lighting")
+            
+            syde:Notify({Title = "Skybox", Content = "Space sky applied!", Duration = 1})
+        end)
+    end
+})
+
+-- Row 3: Clouds & Neon
+WorldTab:Button({
+    Title = "☁️ Clouds",
+    CallBack = function()
+        selectedSkybox = "Clouds"
+        pcall(function()
+            if game:GetService("Lighting"):FindFirstChildOfClass("Sky") then
+                game:GetService("Lighting"):FindFirstChildOfClass("Sky"):Destroy()
+            end
+            
+            local sky = Instance.new("Sky")
+            sky.SkyboxBk = skyboxUrls["Clouds"]
+            sky.SkyboxDn = skyboxUrls["Clouds"]
+            sky.SkyboxFt = skyboxUrls["Clouds"]
+            sky.SkyboxLf = skyboxUrls["Clouds"]
+            sky.SkyboxRt = skyboxUrls["Clouds"]
+            sky.SkyboxUp = skyboxUrls["Clouds"]
+            sky.Parent = game:GetService("Lighting")
+            
+            syde:Notify({Title = "Skybox", Content = "Clouds sky applied!", Duration = 1})
+        end)
+    end
+})
+
+WorldTab:Button({
+    Title = "🌈 Neon",
+    CallBack = function()
+        selectedSkybox = "Neon"
+        pcall(function()
+            if game:GetService("Lighting"):FindFirstChildOfClass("Sky") then
+                game:GetService("Lighting"):FindFirstChildOfClass("Sky"):Destroy()
+            end
+            
+            local sky = Instance.new("Sky")
+            sky.SkyboxBk = skyboxUrls["Neon"]
+            sky.SkyboxDn = skyboxUrls["Neon"]
+            sky.SkyboxFt = skyboxUrls["Neon"]
+            sky.SkyboxLf = skyboxUrls["Neon"]
+            sky.SkyboxRt = skyboxUrls["Neon"]
+            sky.SkyboxUp = skyboxUrls["Neon"]
+            sky.Parent = game:GetService("Lighting")
+            
+            syde:Notify({Title = "Skybox", Content = "Neon sky applied!", Duration = 1})
+        end)
+    end
+})
+
+-- Reset Skybox Button
+WorldTab:Button({
+    Title = "❌ Reset Skybox",
+    CallBack = function()
+        pcall(function()
+            if game:GetService("Lighting"):FindFirstChildOfClass("Sky") then
+                game:GetService("Lighting"):FindFirstChildOfClass("Sky"):Destroy()
+            end
+            selectedSkybox = "Default"
+            syde:Notify({
+                Title = "Skybox",
+                Content = "Skybox reset to default",
+                Duration = 2
+            })
+        end)
+    end
+})
+
+-- ==================== VISUAL EFFECTS ====================
+WorldTab:Section('Visual Effects')
+
+-- Outline Toggle
+WorldTab:Toggle({
+    Title = "Global Outlines",
+    CurrentValue = false,
+    Flag = "Outlines_Flag",
+    CallBack = function(Value)
+        game:GetService("Lighting").Outlines = Value
+    end
+})
+
+-- Shadows Toggle
+WorldTab:Toggle({
+    Title = "Disable Shadows",
+    CurrentValue = false,
+    Flag = "NoShadows_Flag",
+    CallBack = function(Value)
+        game:GetService("Lighting").GlobalShadows = not Value
+    end
+})
+
+-- ==================== RESET BUTTON ====================
+WorldTab:Button({
+    Title = "Reset All World Settings",
+    CallBack = function()
+        pcall(function()
+            -- Reset lighting
+            game:GetService("Lighting").Brightness = 1
+            game:GetService("Lighting").Ambient = Color3.new(0, 0, 0)
+            game:GetService("Lighting").OutdoorAmbient = Color3.new(0.5, 0.5, 0.5)
+            game:GetService("Lighting").TimeOfDay = "12:00:00"
+            game:GetService("Lighting").ClockTime = 12
+            
+            -- Reset fog
+            game:GetService("Lighting").FogStart = 0
+            game:GetService("Lighting").FogEnd = 100000
+            game:GetService("Lighting").FogColor = Color3.new(1, 1, 1)
+            
+            -- Reset effects
+            game:GetService("Lighting").GlobalShadows = true
+            game:GetService("Lighting").Outlines = true
+            game:GetService("Lighting").ColorShift_Top = Color3.new(0, 0, 0)
+            game:GetService("Lighting").ColorShift_Bottom = Color3.new(0, 0, 0)
+            
+            -- Disable time forcing
+            if timeConnection then
+                timeConnection:Disconnect()
+                timeConnection = nil
+            end
+            
+            -- Reset skybox
+            if game:GetService("Lighting"):FindFirstChildOfClass("Sky") then
+                game:GetService("Lighting"):FindFirstChildOfClass("Sky"):Destroy()
+            end
+            
+            -- Disable fullbright
+            if fullbrightEnabled then
+                fullbrightEnabled = false
+                if fullbrightConnection then
+                    fullbrightConnection:Disconnect()
+                    fullbrightConnection = nil
+                end
+            end
+            
+            syde:Notify({
+                Title = "World",
+                Content = "All settings reset!",
+                Duration = 2
+            })
+        end)
+    end
+})
+
+WorldTab:Label("🎨 World visuals ready!", "Left")
+
 -- Initialize ESP after UI is created
 task.wait(3) -- Give UI time to load
 initializeESP()
 
 -- Put this at the VERY BOTTOM of your script
 syde:LoadSaveConfig()
-
--- THIS FIXES THE DROPDOWN SAVING
-task.wait(0.5) -- Give it a moment to load
-if syde.Flags.NameModeDropdown and syde.Flags.NameModeDropdown.Value then
-    ESP_SETTINGS.NAME_MODE = syde.Flags.NameModeDropdown.Value
-    print("✅ Loaded NAME_MODE from config:", ESP_SETTINGS.NAME_MODE)
-end
 
 print("✅ Hallow Interface with ESP loaded successfully!")
