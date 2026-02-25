@@ -1950,22 +1950,24 @@ WorldTab:CreateSlider({
     }}
 })
 
--- ==================== FOG CONTROL ====================
+-- ==================== FOG CONTROL (FIXED - OFF BY DEFAULT) ====================
 WorldTab:Section('Fog Control')
 
--- Fog Toggle
+-- Fog Toggle (OFF by default)
+local fogEnabled = false
 WorldTab:Toggle({
     Title = "Enable Fog",
-    CurrentValue = false,
+    CurrentValue = false,  -- OFF by default
     Flag = "Fog_Enable_Flag",
     CallBack = function(Value)
+        fogEnabled = Value
         if Value then
-            -- Set fog to be visible
+            -- Set fog to be visible (ON)
             game:GetService("Lighting").FogStart = 10
             game:GetService("Lighting").FogEnd = 100
             print("🌫️ Fog enabled")
         else
-            -- Disable fog by pushing it far away
+            -- DISABLE fog by pushing it far away (1e9 = basically infinite)
             game:GetService("Lighting").FogStart = 1e9
             game:GetService("Lighting").FogEnd = 1e9
             print("🌫️ Fog disabled")
@@ -1973,7 +1975,7 @@ WorldTab:Toggle({
     end
 })
 
--- Fog Intensity Slider
+-- Fog Intensity Slider (only works when fog is ON)
 WorldTab:CreateSlider({
     Title = "Fog Intensity",
     Sliders = {{
@@ -1982,7 +1984,9 @@ WorldTab:CreateSlider({
         Increment = 10,
         StarterValue = 100,
         CallBack = function(Value)
-            game:GetService("Lighting").FogEnd = Value
+            if fogEnabled then  -- Only apply if fog is ON
+                game:GetService("Lighting").FogEnd = Value
+            end
         end,
         Flag = "FogIntensity_Flag"
     }}
@@ -1997,7 +2001,9 @@ WorldTab:CreateSlider({
         Increment = 5,
         StarterValue = 10,
         CallBack = function(Value)
-            game:GetService("Lighting").FogStart = Value
+            if fogEnabled then  -- Only apply if fog is ON
+                game:GetService("Lighting").FogStart = Value
+            end
         end,
         Flag = "FogStart_Flag"
     }}
@@ -2009,7 +2015,66 @@ WorldTab:ColorPicker({
     Color = Color3.fromRGB(200, 200, 200),
     Flag = "FogColor_Flag",
     CallBack = function(Value)
-        game:GetService("Lighting").FogColor = Value
+        if fogEnabled then  -- Only apply if fog is ON
+            game:GetService("Lighting").FogColor = Value
+        end
+    end
+})
+
+-- ==================== FOG REMOVAL BUTTON ====================
+WorldTab:Section('Fog Removal')
+
+-- Instant Fog Removal Button
+WorldTab:Button({
+    Title = "🌫️ REMOVE ALL FOG",
+    CallBack = function()
+        pcall(function()
+            -- Set fog to maximum distance (completely disabled)
+            game:GetService("Lighting").FogStart = 1e9
+            game:GetService("Lighting").FogEnd = 1e9
+            
+            -- Also set fog color to default (optional)
+            game:GetService("Lighting").FogColor = Color3.new(1, 1, 1)
+            
+            -- Update the toggle state
+            fogEnabled = false
+            
+            -- Visual feedback
+            syde:Notify({
+                Title = "Fog Removed",
+                Content = "All fog has been cleared!",
+                Duration = 2
+            })
+            print("🌫️ ALL FOG REMOVED by button")
+        end)
+    end
+})
+
+-- Double Strength Fog Removal (for stubborn fog)
+WorldTab:Button({
+    Title = "💪 EXTREME FOG REMOVAL",
+    CallBack = function()
+        pcall(function()
+            -- Set to even larger values
+            game:GetService("Lighting").FogStart = 1e10
+            game:GetService("Lighting").FogEnd = 1e10
+            
+            -- Also try setting to 0 and back (sometimes resets it)
+            game:GetService("Lighting").FogStart = 0
+            game:GetService("Lighting").FogEnd = 0
+            task.wait(0.1)
+            game:GetService("Lighting").FogStart = 1e10
+            game:GetService("Lighting").FogEnd = 1e10
+            
+            fogEnabled = false
+            
+            syde:Notify({
+                Title = "Extreme Fog Removal",
+                Content = "Fog has been annihilated!",
+                Duration = 2
+            })
+            print("🌫️ EXTREME FOG REMOVAL activated")
+        end)
     end
 })
 
@@ -2289,7 +2354,7 @@ WorldTab:Toggle({
     end
 })
 
--- ==================== RESET BUTTON ====================
+-- ==================== RESET BUTTON (UPDATED) ====================
 WorldTab:Button({
     Title = "Reset All World Settings",
     CallBack = function()
@@ -2301,10 +2366,11 @@ WorldTab:Button({
             game:GetService("Lighting").TimeOfDay = "12:00:00"
             game:GetService("Lighting").ClockTime = 12
             
-            -- Reset fog
-            game:GetService("Lighting").FogStart = 0
-            game:GetService("Lighting").FogEnd = 100000
+            -- Reset fog to DISABLED (1e9, not 100000)
+            game:GetService("Lighting").FogStart = 1e9
+            game:GetService("Lighting").FogEnd = 1e9
             game:GetService("Lighting").FogColor = Color3.new(1, 1, 1)
+            fogEnabled = false  -- Update toggle state
             
             -- Reset effects
             game:GetService("Lighting").GlobalShadows = true
@@ -2334,7 +2400,7 @@ WorldTab:Button({
             
             syde:Notify({
                 Title = "World",
-                Content = "All settings reset!",
+                Content = "All settings reset! (Fog disabled)",
                 Duration = 2
             })
         end)
