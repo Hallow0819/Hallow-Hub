@@ -1348,6 +1348,7 @@ AimbotTab:Dropdown({
         elseif  keyName == "MouseButton5" then
             aimbotKey = Enum.UserInputType.MouseButton5
             print("🔑 Aimbot key set to: Fifth Mouse Button")
+        else
             -- Regular keyboard key
             local success, enumKey = pcall(function()
                 return Enum.KeyCode[keyName]
