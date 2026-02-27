@@ -1564,24 +1564,48 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
--- Keybind handler (using dropdown key)
+-- Keybind handler (FIXED - works with mouse buttons)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     
-    -- Check if the input matches our selected key
-    if input.KeyCode == aimbotKey then
+    -- Check if input matches (works for both KeyCode and UserInputType)
+    local matches = false
+    if typeof(aimbotKey) == "EnumItem" and aimbotKey.EnumType == Enum.KeyCode then
+        matches = (input.KeyCode == aimbotKey)
+    elseif typeof(aimbotKey) == "EnumItem" and aimbotKey.EnumType == Enum.UserInputType then
+        matches = (input.UserInputType == aimbotKey)
+    end
+    
+    if matches then
         keyPressed = true
         
         if aimbotMode == "Hold Key" then
             aimbotActive = true
-            print("🎯 Aimbot ACTIVE (holding key)")
+            print("🎯 Aimbot ACTIVE")
         elseif aimbotMode == "Toggle Key" then
             aimbotActive = not aimbotActive
             if not aimbotActive then
-                currentTarget = nil  -- Clear target when toggled off
+                currentTarget = nil
             end
-            print("🎯 Aimbot:", aimbotActive and "TOGGLED ON" or "TOGGLED OFF")
+            print("🎯 Aimbot:", aimbotActive and "ON" or "OFF")
         end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    -- Check if input matches
+    local matches = false
+    if typeof(aimbotKey) == "EnumItem" and aimbotKey.EnumType == Enum.KeyCode then
+        matches = (input.KeyCode == aimbotKey)
+    elseif typeof(aimbotKey) == "EnumItem" and aimbotKey.EnumType == Enum.UserInputType then
+        matches = (input.UserInputType == aimbotKey)
+    end
+    
+    if matches and aimbotMode == "Hold Key" then
+        keyPressed = false
+        aimbotActive = false
+        currentTarget = nil
+        print("🎯 Aimbot DEACTIVATED")
     end
 end)
 
