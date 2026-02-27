@@ -204,8 +204,8 @@ local function startFly()
             if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cf.LookVector end
             if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cf.RightVector end
             if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cf.RightVector end
-            if UIS:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
-            if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir = moveDir - Vector3.new(0, 1, 0) end
+            if UIS:IsKeyDown(Enum.KeyCode.E) then moveDir = moveDir + Vector3.new(0, 1, 0) end
+            if UIS:IsKeyDown(Enum.KeyCode.Q) then moveDir = moveDir - Vector3.new(0, 1, 0) end
             
             -- Mobile joystick controls
             moveDir = moveDir + moveDirection
@@ -1107,6 +1107,7 @@ UtilityTab:Toggle({
 -- Infinite Jump Toggle (SETS THE VARIABLE)
 UtilityTab:Toggle({
     Title = "Infinite Jump", 
+    Config = true,
     CurrentValue = false, 
     Flag = "IJ_Flag", 
     CallBack = function(Value)
@@ -1116,6 +1117,7 @@ UtilityTab:Toggle({
 -- Noclip Toggle (SETS THE VARIABLE)
 UtilityTab:Toggle({
     Title = "Noclip", 
+    Config = true,
     CurrentValue = false, 
     Flag = "NC_Flag", 
     CallBack = function(Value)
