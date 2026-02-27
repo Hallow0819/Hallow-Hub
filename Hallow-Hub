@@ -1331,16 +1331,29 @@ AimbotTab:Dropdown({
     Flag = "AimbotKeySelect",
     CallBack = function(option)
         local keyName = type(option) == "table" and option[1] or option
-        -- Convert string to Enum.KeyCode
-        local success, enumKey = pcall(function()
-            return Enum.KeyCode[keyName]
-        end)
-        if success and enumKey then
-            aimbotKey = enumKey
-            print("🔑 Aimbot key set to:", keyName)
+        
+        -- Handle mouse buttons
+        if keyName == "MouseButton1" then
+            aimbotKey = Enum.UserInputType.MouseButton1
+            print("🔑 Aimbot key set to: Left Mouse Button")
+        elseif keyName == "MouseButton2" then
+            aimbotKey = Enum.UserInputType.MouseButton2
+            print("🔑 Aimbot key set to: Right Mouse Button")
+        elseif keyName == "MouseButton3" then
+            aimbotKey = Enum.UserInputType.MouseButton3
+            print("🔑 Aimbot key set to: Middle Mouse Button")
         else
-            print("⚠️ Invalid key, using LeftShift")
-            aimbotKey = Enum.KeyCode.LeftShift
+            -- Regular keyboard key
+            local success, enumKey = pcall(function()
+                return Enum.KeyCode[keyName]
+            end)
+            if success and enumKey then
+                aimbotKey = enumKey
+                print("🔑 Aimbot key set to:", keyName)
+            else
+                print("⚠️ Invalid key, using LeftShift")
+                aimbotKey = Enum.KeyCode.LeftShift
+            end
         end
     end
 })
