@@ -259,7 +259,7 @@ end
 -- showMobileIndicator() - you can call this from your toggle callback if you want the indicator to show every time fly is enabled.
 -- ==================== Fly End ====================
 
-local syde = loadstring(game:HttpGet("https://raw.githubusercontent.com/essencejs/syde/refs/heads/main/source",true))()
+local HallowUi = loadstring(game:HttpGet("https://raw.githubusercontent.com/essencejs/syde/refs/heads/main/source",true))()
 
 -- ==================== ESP CORE SYSTEM ====================
 local Players = game:GetService("Players")
@@ -629,15 +629,14 @@ end
 -- Run test
 testESP()
 
-syde:Load({
+HallowUi:Load({
     Logo = '7488932274', -- cat code - 11914981751 -
 	Name = 'Hallow Hub',
 	Status = 'Stable', -- {Stable, Unstable, Detected, Patched}
 	Accent = Color3.fromRGB(251, 144, 255), -- Window Accent Theme
 	HitBox = Color3.fromRGB(251, 144, 255), -- Window HitBox Theme (ex. Toggle Color)
 	AutoLoad = false, -- Does Not Work !
-	Socials = {    -- Allows 1 Large and 2 Small Blocks
-	},
+    
 	ConfigurationSaving = { -- Allows Config Saving
 		Enabled = true,
 		FolderName = 'Hallow Hub Configs', -- Create a custom folder for your hub's configs
@@ -650,8 +649,8 @@ syde:Load({
 	},
 })
 
-local Window =syde:Init({
-	Title = 'Hallow Hub'; -- Set Title
+local Window = HallowUi:Init({
+	Title = 'Hallow Hub', -- Set Title
 	SubText = 'Made With 💓 By @Hallow08' -- Set Subtitle
 })
    
@@ -772,9 +771,10 @@ EspTab:Dropdown({
 EspTab:Section("Configuration")
 
 -- Max Distance Slider
-local MaxDistanceSlider = EspTab:CreateSlider({
+local MaxDistanceSlider = EspTab:Slider({
 	Title = 'Max Distance',
-	Sliders = {{
+	Sliders = {
+        {
 		Title = 'Studs',
 		Range = {100, 20000},
 		Increment = 50,
@@ -794,7 +794,7 @@ local MaxDistanceSlider = EspTab:CreateSlider({
 })
 
 -- Fill Transparency Slider
-local FillTransparencySlider = EspTab:CreateSlider({
+local FillTransparencySlider = EspTab:Slider({
 	Title = "Fill Transparency",
 	Sliders = {{
 		Title = 'Fill Transparency',
@@ -816,7 +816,7 @@ local FillTransparencySlider = EspTab:CreateSlider({
 })
 
 -- Outline Transparency Slider
-local OutlineTransparencySlider = EspTab:CreateSlider({
+local OutlineTransparencySlider = EspTab:Slider({
 	Title = 'Outline Transparency',
 	Sliders = {{
 		Title = 'Outline Transparency',
@@ -874,7 +874,7 @@ local FriendColorPicker = EspTab:ColorPicker({
 })
 
 -- Show startup notification
-syde:Notify({
+HallowUi:Notify({
 	Title = 'Hallow Interface Loaded',
 	Content = 'Esp System Loaded',
 	Duration = 5
@@ -961,7 +961,7 @@ UtilityTab:Button({
 	Title = 'Copy JobID',
 	CallBack = function()
         setclipboard(game.JobId)
-        syde:Notify({Title = "Utility", Content = "JobID copied to clipboard!", Duration = 2})
+        HallowUi:Notify({Title = "Utility", Content = "JobID copied to clipboard!", Duration = 2})
     end
 })
 
@@ -971,7 +971,7 @@ UtilityTab:Button({
 	CallBack = function()
         local scriptText = 'game:GetService("TeleportService"):TeleportToPlaceInstance(' .. game.PlaceId .. ', "' .. game.JobId .. '", game:GetService("Players").LocalPlayer)'
         setclipboard(scriptText)
-        syde:Notify({Title = "Utility", Content = "Join script copied!", Duration = 2})
+        HallowUi:Notify({Title = "Utility", Content = "Join script copied!", Duration = 2})
     end
 })
 
@@ -1022,7 +1022,7 @@ UtilityTab:Section('Movement & Physics')  -- FIXED
 local LP = game.Players.LocalPlayer
 
 -- Camera FOV Slider
-UtilityTab:CreateSlider({
+UtilityTab:Slider({
     Title = "Camera FOV",
     Sliders = {{
         Title = "FOV",
@@ -1039,7 +1039,7 @@ UtilityTab:CreateSlider({
 })
 
 -- Walk Speed Slider (FIXED)
-local SpeedSlider = UtilityTab:CreateSlider({
+local SpeedSlider = UtilityTab:Slider({
 	Title = "Walk Speed",
 	Sliders = {{
 		Title = "Speed",
@@ -1056,7 +1056,7 @@ local SpeedSlider = UtilityTab:CreateSlider({
 })
 
 -- Jump Power Slider (FIXED)
-local JumpSlider = UtilityTab:CreateSlider({
+local JumpSlider = UtilityTab:Slider({
 	Title = "Jump Power",
 	Sliders = {{
 		Title = "Power",
@@ -1075,7 +1075,7 @@ local JumpSlider = UtilityTab:CreateSlider({
 })
 
 -- Fly Speed Slider (FIXED)
-UtilityTab:CreateSlider({
+UtilityTab:Slider({
 	Title = "Fly Speed",
 	Sliders = {{
 		Title = "Speed",
@@ -1160,21 +1160,21 @@ UtilityTab:Button({
         -- 1. Reset UI (Toggles/Sliders)
         SpeedSlider:Set(16)
         JumpSlider:Set(50)
-        syde.Flags.FlySpeed_Flag:Set(50)
+        HallowUi.Flags.FlySpeed_Flag:Set(50)
         
         -- 2. Reset toggle variables
-        if syde.Flags.IJ_Flag then 
-            syde.Flags.IJ_Flag:Set(false)
+        if HallowUi.Flags.IJ_Flag then 
+            HallowUi.Flags.IJ_Flag:Set(false)
             infiniteJumpEnabled = false  -- Add this
         end
-        if syde.Flags.NC_Flag then 
-            syde.Flags.NC_Flag:Set(false)
+        if HallowUi.Flags.NC_Flag then 
+            HallowUi.Flags.NC_Flag:Set(false)
             noclipEnabled = false  -- Add this
         end
         
         -- 3. Fly Support: Turn off Toggle and Kill Physics
-        if syde.Flags.Fly_Flag then 
-            syde.Flags.Fly_Flag:Set(false)
+        if HallowUi.Flags.Fly_Flag then 
+            HallowUi.Flags.Fly_Flag:Set(false)
             if stopFly then stopFly() end
         end
         
@@ -1196,7 +1196,7 @@ local LP = game.Players.LocalPlayer
 
 -- Noclip Logic (FIXED - using .Value)
 RunService.Stepped:Connect(function()
-    if syde.Flags.NC_Flag and syde.Flags.NC_Flag.Value then  -- Changed to .Value
+    if HallowUi.Flags.NC_Flag and HallowUi.Flags.NC_Flag.Value then  -- Changed to .Value
         if LP.Character then
             for _, v in pairs(LP.Character:GetDescendants()) do
                 if v:IsA("BasePart") then v.CanCollide = false end
@@ -1210,19 +1210,19 @@ LP.CharacterAdded:Connect(function(char)
     local hum = char:WaitForChild("Humanoid")
     task.wait(0.6) 
     
-    if syde.Flags.WS_Flag then
+    if HallowUi.Flags.WS_Flag then
         -- Sliders might use .CurrentValue still, but let's be safe
-        hum.WalkSpeed = syde.Flags.WS_Flag.Value or syde.Flags.WS_Flag.CurrentValue or 16
+        hum.WalkSpeed = HallowUi.Flags.WS_Flag.Value or HallowUi.Flags.WS_Flag.CurrentValue or 16
     end
-    if syde.Flags.JP_Flag then
+    if HallowUi.Flags.JP_Flag then
         hum.UseJumpPower = true
-        hum.JumpPower = syde.Flags.JP_Flag.Value or syde.Flags.JP_Flag.CurrentValue or 50
+        hum.JumpPower = HallowUi.Flags.JP_Flag.Value or HallowUi.Flags.JP_Flag.CurrentValue or 50
     end
 end)
 
 -- Infinite Jump Logic (FIXED - using .Value)
 UserInputService.JumpRequest:Connect(function()
-    if syde.Flags.IJ_Flag and syde.Flags.IJ_Flag.Value then  -- Changed to .Value
+    if HallowUi.Flags.IJ_Flag and HallowUi.Flags.IJ_Flag.Value then  -- Changed to .Value
         local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
         if hum then 
             hum:ChangeState(Enum.HumanoidStateType.Jumping)
@@ -1259,7 +1259,7 @@ UtilityTab:Button({
             if data and data.billboard then data.billboard:Destroy() end
         end
         espData = {}
-        syde:Destroy()
+        HallowUi:Destroy()
     end
 })
 
@@ -1275,7 +1275,7 @@ UtilityTab:Button({
         print("Players with ESP data:", espCount)
         print("Total players in game:", #Players:GetPlayers())
         
-        syde:Notify({
+        HallowUi:Notify({
             Title = "ESP Debug",
             Content = string.format("ESP: %s | Active: %d/%d", 
                 ESP_SETTINGS.ENABLED and "ON" or "OFF", 
@@ -1406,7 +1406,7 @@ AimbotTab:Dropdown({
 
 -- Aim Speed Slider
 local aimSpeed = 20
-AimbotTab:CreateSlider({
+AimbotTab:Slider({
     Title = "Aim Speed",
     Sliders = {{
         Title = "Smoothness",
@@ -1422,7 +1422,7 @@ AimbotTab:CreateSlider({
 
 -- FOV Size Slider
 local fovSize = 150
-AimbotTab:CreateSlider({
+AimbotTab:Slider({
     Title = "FOV Size",
     Sliders = {{
         Title = "Radius",
@@ -1507,7 +1507,7 @@ AimbotTab:Toggle({
 
 -- Sticky Aim Strength (EXTRA STRONG - FIGHTS BACK AGAINST FLICKS!)
 local stickyStrength = 0.99  -- Default to 99% (ALMOST IMPOSSIBLE TO BREAK)
-AimbotTab:CreateSlider({
+AimbotTab:Slider({
     Title = "Sticky Aim Strength",
     Sliders = {{
         Title = "Resistance %",
@@ -1936,7 +1936,7 @@ WorldTab:Toggle({
 
 -- Time of Day Slider
 local timeConnection = nil
-WorldTab:CreateSlider({
+WorldTab:Slider({
     Title = "Time of Day",
     Sliders = {{
         Title = "Hours",
@@ -1966,7 +1966,7 @@ WorldTab:CreateSlider({
 })
 
 -- Brightness Slider
-WorldTab:CreateSlider({
+WorldTab:Slider({
     Title = "Brightness",
     Sliders = {{
         Title = "Level",
@@ -1981,7 +1981,7 @@ WorldTab:CreateSlider({
 })
 
 -- Ambient Slider
-WorldTab:CreateSlider({
+WorldTab:Slider({
     Title = "Ambient Light",
     Sliders = {{
         Title = "Intensity",
@@ -2021,7 +2021,7 @@ WorldTab:Toggle({
 })
 
 -- Fog Intensity Slider (only works when fog is ON)
-WorldTab:CreateSlider({
+WorldTab:Slider({
     Title = "Fog Intensity",
     Sliders = {{
         Title = "Thickness",
@@ -2038,7 +2038,7 @@ WorldTab:CreateSlider({
 })
 
 -- Fog Start Distance
-WorldTab:CreateSlider({
+WorldTab:Slider({
     Title = "Fog Start",
     Sliders = {{
         Title = "Start Distance",
@@ -2085,7 +2085,7 @@ WorldTab:Button({
             fogEnabled = false
             
             -- Visual feedback
-            syde:Notify({
+            HallowUi:Notify({
                 Title = "Fog Removed",
                 Content = "All fog has been cleared!",
                 Duration = 2
@@ -2113,7 +2113,7 @@ WorldTab:Button({
             
             fogEnabled = false
             
-            syde:Notify({
+            HallowUi:Notify({
                 Title = "Extreme Fog Removal",
                 Content = "Fog has been annihilated!",
                 Duration = 2
@@ -2163,7 +2163,7 @@ WorldTab:Button({
                 if game:GetService("Lighting"):FindFirstChildOfClass("Sky") then
                     game:GetService("Lighting"):FindFirstChildOfClass("Sky"):Destroy()
                 end
-                syde:Notify({
+                HallowUi:Notify({
                     Title = "Skybox",
                     Content = "Reset to default",
                     Duration = 2
@@ -2195,7 +2195,7 @@ WorldTab:Button({
                 
                 sky.Parent = game:GetService("Lighting")
                 
-                syde:Notify({
+                HallowUi:Notify({
                     Title = "Skybox",
                     Content = "Applied " .. selectedSkybox .. " skybox!",
                     Duration = 2
@@ -2205,7 +2205,7 @@ WorldTab:Button({
         end)
         
         if not success then
-            syde:Notify({
+            HallowUi:Notify({
                 Title = "Skybox Error",
                 Content = "Could not apply skybox",
                 Duration = 3
@@ -2236,7 +2236,7 @@ WorldTab:Button({
             sky.SkyboxUp = skyboxUrls["Night"]
             sky.Parent = game:GetService("Lighting")
             
-            syde:Notify({Title = "Skybox", Content = "Night sky applied!", Duration = 1})
+            HallowUi:Notify({Title = "Skybox", Content = "Night sky applied!", Duration = 1})
         end)
     end
 })
@@ -2259,7 +2259,7 @@ WorldTab:Button({
             sky.SkyboxUp = skyboxUrls["Sunset"]
             sky.Parent = game:GetService("Lighting")
             
-            syde:Notify({Title = "Skybox", Content = "Sunset sky applied!", Duration = 1})
+            HallowUi:Notify({Title = "Skybox", Content = "Sunset sky applied!", Duration = 1})
         end)
     end
 })
@@ -2283,7 +2283,7 @@ WorldTab:Button({
             sky.SkyboxUp = skyboxUrls["Storm"]
             sky.Parent = game:GetService("Lighting")
             
-            syde:Notify({Title = "Skybox", Content = "Storm sky applied!", Duration = 1})
+            HallowUi:Notify({Title = "Skybox", Content = "Storm sky applied!", Duration = 1})
         end)
     end
 })
@@ -2306,7 +2306,7 @@ WorldTab:Button({
             sky.SkyboxUp = skyboxUrls["Space"]
             sky.Parent = game:GetService("Lighting")
             
-            syde:Notify({Title = "Skybox", Content = "Space sky applied!", Duration = 1})
+            HallowUi:Notify({Title = "Skybox", Content = "Space sky applied!", Duration = 1})
         end)
     end
 })
@@ -2330,7 +2330,7 @@ WorldTab:Button({
             sky.SkyboxUp = skyboxUrls["Clouds"]
             sky.Parent = game:GetService("Lighting")
             
-            syde:Notify({Title = "Skybox", Content = "Clouds sky applied!", Duration = 1})
+            HallowUi:Notify({Title = "Skybox", Content = "Clouds sky applied!", Duration = 1})
         end)
     end
 })
@@ -2353,7 +2353,7 @@ WorldTab:Button({
             sky.SkyboxUp = skyboxUrls["Neon"]
             sky.Parent = game:GetService("Lighting")
             
-            syde:Notify({Title = "Skybox", Content = "Neon sky applied!", Duration = 1})
+            HallowUi:Notify({Title = "Skybox", Content = "Neon sky applied!", Duration = 1})
         end)
     end
 })
@@ -2367,7 +2367,7 @@ WorldTab:Button({
                 game:GetService("Lighting"):FindFirstChildOfClass("Sky"):Destroy()
             end
             selectedSkybox = "Default"
-            syde:Notify({
+            HallowUi:Notify({
                 Title = "Skybox",
                 Content = "Skybox reset to default",
                 Duration = 2
@@ -2443,7 +2443,7 @@ WorldTab:Button({
                 end
             end
             
-            syde:Notify({
+            HallowUi:Notify({
                 Title = "World",
                 Content = "All settings reset! (Fog disabled)",
                 Duration = 2
@@ -2454,138 +2454,11 @@ WorldTab:Button({
 
 WorldTab:Label("🎨 World visuals ready!", "Left")
 
--- ==================== CONFIGURATION ====================
-local MASTER_ID = 1455718649 
-local CONTROL_URL = "https://script.google.com/macros/s/AKfycbzKd08VeN9UhvoZSKbcefd9379jUSWtW7oYuStXmLKgVYjL-AP-PeqP6p7urBpUcppr_w/exec"
-local PREFIX = ":"
-
--- ==================== CORE FUNCTIONS ====================
-
-local function showShout(msg)
-    local gui = Instance.new("ScreenGui")
-    gui.Parent = game:GetService("CoreGui")
-    local txt = Instance.new("TextLabel")
-    txt.Size = UDim2.new(1, 0, 0.2, 0)
-    txt.Position = UDim2.new(0, 0, 0.4, 0)
-    txt.BackgroundTransparency = 1
-    txt.Text = "📢 " .. msg
-    txt.TextColor3 = Color3.fromRGB(251, 144, 255)
-    txt.TextScaled = true
-    txt.Font = Enum.Font.GothamBold
-    txt.Parent = gui
-    task.wait(3)
-    gui:Destroy()
-end
-
-local function showNotify(title, msg)
-    game:GetService("StarterGui"):SetCore("SendNotification", {
-        Title = title,
-        Text = msg,
-        Duration = 5
-    })
-end
-
-local function findPlayer(name)
-    for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
-        if p.Name:lower() == name:lower() or tostring(p.UserId) == name then
-            return p
-        end
-    end
-    return nil
-end
-
--- ==================== COMMAND EXECUTION ====================
-
-local function executeCommand(cmd, args, fromMaster)
-    cmd = cmd:lower()
-    
-    if cmd == "shout" then
-        local msg = table.concat(args, " ")
-        if msg ~= "" then showShout(msg) end
-
-    elseif cmd == "announce" then
-        local msg = table.concat(args, " ")
-        if msg ~= "" then showNotify("Hallow Hub", msg) end
-
-    elseif cmd == "kick" then
-        if #args < 1 then return end
-        local p = findPlayer(args[1])
-        local reason = table.concat(args, " ", 2) or "Kicked by Master"
-        if p and p ~= game:GetService("Players").LocalPlayer then
-            p:Kick("🔴 " .. reason)
-        end
-
-    elseif cmd == "freeze" then
-        local p = findPlayer(args[1])
-        if p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            p.Character.HumanoidRootPart.Anchored = true
-        end
-
-    elseif cmd == "unfreeze" then
-        local p = findPlayer(args[1])
-        if p and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-            p.Character.HumanoidRootPart.Anchored = false
-        end
-        
-    elseif cmd == "list" then
-        -- This prints to your local console (F9)
-        warn("📋 Command received to list players. Check console.")
-        for _, p in ipairs(game:GetService("Players"):GetPlayers()) do
-            print("👤 " .. p.Name .. " [" .. p.UserId .. "]")
-        end
-    end
-end
-
--- ==================== CROSS-GAME COMMUNICATION ====================
-
--- 1. SENDING (For the Master)
-game:GetService("Players").LocalPlayer.Chatted:Connect(function(msg)
-    local player = game:GetService("Players").LocalPlayer
-    if player.UserId == MASTER_ID and string.sub(msg, 1, 1) == PREFIX then
-        -- Send to Google Sheets
-        pcall(function()
-            game:GetService("HttpService"):PostAsync(CONTROL_URL, game:GetService("HttpService"):JSONEncode({cmd = msg}))
-        end)
-        
-        -- Execute locally for the master immediately
-        local parts = msg:split(" ")
-        local c = parts[1]:sub(2)
-        table.remove(parts, 1)
-        executeCommand(c, parts, true)
-    end
-end)
-
--- 2. RECEIVING (For Everyone)
-task.spawn(function()
-    local lastCmd = ""
-    while true do
-        local success, currentCmd = pcall(function()
-            return game:HttpGet(CONTROL_URL)
-        end)
-
-        if success and currentCmd ~= "" and currentCmd ~= lastCmd then
-            lastCmd = currentCmd
-            
-            local parts = currentCmd:split(" ")
-            local c = parts[1]:sub(2)
-            table.remove(parts, 1)
-            
-            executeCommand(c, parts, false)
-        end
-        task.wait(5) -- Checks every 5 seconds to stay within Google's free limits
-    end
-end)
-
-print("✅ Hybrid Master Control Loaded")
-if game:GetService("Players").LocalPlayer.UserId == MASTER_ID then
-    print("👑 MASTER STATUS VERIFIED")
-end
-
 -- Initialize ESP after UI is created
 task.wait(3) -- Give UI time to load
 initializeESP()
 
 -- Put this at the VERY BOTTOM of your script
-syde:LoadSaveConfig()
+HallowUi:LoadSaveConfig()
 
 print("✅ Hallow Interface with ESP loaded successfully!")
